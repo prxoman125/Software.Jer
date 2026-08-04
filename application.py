@@ -1,16 +1,14 @@
 import streamlit as st
 import pandas as pd
 from deep_translator import GoogleTranslator
-import requests
 from requests import Session
 
 # ==========================================
 # PARCHE DE SEGURIDAD CONTRA ERROR 500 GOOGLE
 # ==========================================
-# Este bloque engaña al servidor de Google simulando ser un navegador real
 _original_send = Session.send
 def _patched_send(*args, **kwargs):
-    request = args[1]
+    request = args
     request.headers["User-Agent"] = (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -22,6 +20,30 @@ Session.send = _patched_send
 
 # Configuración de la página
 st.set_page_config(page_title="Lector y Traductor Multitabla", layout="wide")
+
+# ==========================================
+# DISEÑO PERSONALIZADO: AZUL OSCURO NEÓN (SIN EMOJIS)
+# ==========================================
+st.markdown("""
+    <style>
+        /* Estilo neón azul oscuro para los contenedores de las tablas */
+        .tabla-contenedor {
+            border: 2px solid #0055ff !important;
+            box-shadow: 0 0 10px #0022aa, inset 0 0 5px #001155 !important;
+            border-radius: 8px !important;
+            padding: 15px !important;
+            margin-bottom: 25px !important;
+            background-color: transparent !important;
+        }
+        /* Estilo para los títulos de cada tabla */
+        .tabla-titulo {
+            color: #0088ff !important;
+            font-weight: bold !important;
+            text-shadow: 0 0 5px #0033aa !important;
+            margin-bottom: 10px !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Inicializar las variables de estado de forma persistente
 if "tablas_originales" not in st.session_state:
@@ -46,8 +68,8 @@ def hacer_columnas_unicas(df):
     df.columns = cols
     return df
 
-st.title("📊 Lector y Traductor de Múltiples Tablas Excel")
-st.write("Sube tus archivos. El sistema cuenta con parches automatizados contra caídas de servidor.")
+st.title("Lector y Traductor de Multiples Tablas Excel")
+st.write("Sube tus archivos. El sistema cuenta con parches automatizados contra caidas de servidor.")
 
 # Clave dinámica para reiniciar por completo el cargador al borrar
 if "uploader_key" not in st.session_state:
@@ -93,23 +115,21 @@ if st.session_state.tablas_originales:
     with col1:
         idioma_seleccionado = st.selectbox(
             "Selecciona el idioma al que deseas traducir:",
-            ("Español (de inglés)", "Inglés (de español)"),
+            ("Español (de ingles)", "Ingles (de espanol)"),
             index=0
         )
         
-        if st.button("🔄 Traducir Todas las Tablas", type="secondary"):
-            target_lang = "es" if idioma_seleccionado == "Español (de inglés)" else "en"
+        if st.button("Traducir Todas las Tablas", type="secondary"):
+            target_lang = "es" if idioma_seleccionado == "Español (de ingles)" else "en"
             
             with st.spinner("Traduciendo registros... Por favor espera..."):
                 try:
                     translator = GoogleTranslator(source='auto', target=target_lang)
                     
-                    # Función ultra-segura para celdas individuales
                     def traducir_seguro(val):
                         if pd.isna(val): 
                             return val
                         val_str = str(val).strip()
-                        # Solo enviamos a Google si es texto real y no números sueltos o símbolos
                         if val_str and not val_str.replace('.', '', 1).isdigit():
                             try:
                                 return translator.translate(val_str)
@@ -120,7 +140,6 @@ if st.session_state.tablas_originales:
                     for nombre_archivo, df_orig in st.session_state.tablas_originales.items():
                         df_traducido = df_orig.copy()
                         
-                        # Traducir los encabezados de forma segura
                         nuevas_cols = []
                         for col in df_traducido.columns:
                             col_str = str(col).strip()
@@ -135,22 +154,21 @@ if st.session_state.tablas_originales:
                         df_traducido.columns = nuevas_cols
                         df_traducido = hacer_columnas_unicas(df_traducido)
                         
-                        # Traducir las celdas aplicando el filtro seguro
                         for col in df_traducido.columns:
                             df_traducido[col] = df_traducido[col].apply(traducir_seguro)
                         
                         st.session_state.tablas_render[nombre_archivo] = df_traducido
                     
                     st.session_state.idioma_actual = "Traducido"
-                    st.success("¡Todas las tablas fueron traducidas con éxito!")
+                    st.success("Todas las tablas fueron traducidas con exito")
                     st.rerun()
                 except Exception as error_global:
-                    st.error(f"Error de conexión con el servidor de traducción: {error_global}. Por favor intenta de nuevo.")
+                    st.error(f"Error de conexion con el servidor de traduccion. Por favor intenta de nuevo.")
 
     with col2:
         st.write("")
         st.write("")
-        if st.button("🗑️ Borrar Todas las Tablas", type="primary"):
+        if st.button("Borrar Todas las Tablas", type="primary"):
             st.session_state.tablas_originales = {}
             st.session_state.tablas_render = {}
             st.session_state.idioma_actual = "Original"
@@ -159,10 +177,16 @@ if st.session_state.tablas_originales:
 
     # === 3. VISTA EN PANTALLA ===
     st.write("---")
-    st.write(f"### Visualizando tablas en modo: **{st.session_state.idioma_actual}**")
+    st.write(f"Visualizando tablas en modo: **{st.session_state.idioma_actual}**")
     
+    # Renderizado con contenedores HTML para aplicar los bordes azul neón oscuros
     for indice, (nombre_archivo, df_tabla) in enumerate(st.session_state.tablas_render.items()):
-        st.markdown(f"#### 📄 Tabla {indice + 1}: `{nombre_archivo}`")
+        st.markdown(f"""
+            <div class="tabla-contenedor">
+                <div class="tabla-titulo">Tabla {indice + 1}: {nombre_archivo}</div>
+            </div>
+        """, unsafe_allow_html=True)
+        # La tabla se coloca justo debajo del contenedor con borde neón
         st.dataframe(df_tabla, use_container_width=True)
         st.write("") 
 
