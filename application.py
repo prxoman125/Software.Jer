@@ -4,7 +4,7 @@ from deep_translator import GoogleTranslator
 from requests import Session
 
 # ==========================================
-# PARCHE DE SEGURIDAD CONTRA ERROR 500 GOOGLE
+# PARCHE DE SEGURIDAD AVANZADO DE CONEXIÓN
 # ==========================================
 _original_send = Session.send
 def _patched_send(*args, **kwargs):
@@ -12,7 +12,7 @@ def _patched_send(*args, **kwargs):
     request.headers["User-Agent"] = (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
+        "Chrome/124.0.0.0 Safari/537.36"
     )
     return _original_send(*args, **kwargs)
 Session.send = _patched_send
@@ -22,7 +22,7 @@ Session.send = _patched_send
 st.set_page_config(page_title="Lector y Traductor Multitabla", layout="wide")
 
 # ==========================================
-# DISEÑO PERSONALIZADO: AZUL OSCURO NEÓN Y BORDES DE TABLAS
+# ESTILOS PERSONALIZADOS: NEÓN Y INTERFAZ DIDÁCTICA
 # ==========================================
 st.markdown("""
     <style>
@@ -44,7 +44,7 @@ st.markdown("""
             margin: 0 !important;
         }
 
-        /* 2. RECUADRO NEÓN PARA LOS TÍTULOS DE CADA TABLA SEPARADA */
+        /* 2. RECUADRO NEÓN PARA LOS TÍTULOS DE CADA TABLA */
         .tabla-contenedor {
             border: 2px solid #0033aa;
             box-shadow: 0 0 12px #001188;
@@ -60,20 +60,49 @@ st.markdown("""
             text-shadow: 0 0 5px #002288 !important;
         }
 
-        /* 3. CAMBIAR LÍNEAS INTERNAS Y BORDES DE LAS TABLAS DE STREAMLIT */
-        /* Forzamos los colores de la cuadrícula interactiva de Streamlit (Glide Data Grid) */
+        /* 3. LÍNEAS INTERNAS Y BORDES DE LAS TABLAS DE STREAMLIT */
         [data-testid="stDataFrame"] {
             border: 2px solid #002288 !important;
             border-radius: 6px !important;
             box-shadow: 0 0 8px #001166 !important;
-            --st-border-color: #002288 !important;          /* Líneas de división internas */
+            --st-border-color: #002288 !important;
             --theme-borderColor: #002288 !important;
             --st-background-color: transparent !important;
         }
-        
-        /* Ajustes adicionales para bordes de celdas en el componente nativo */
         div[data-testid="stDataFrame"] > div {
             border-color: #002288 !important;
+        }
+
+        /* 4. ESTILOS DIDÁCTICOS PARA BOTONES GRANDES PERSONALIZADOS */
+        div.stButton > button {
+            width: 100% !important;
+            height: 60px !important;
+            font-size: 18px !important;
+            font-weight: bold !important;
+            border-radius: 10px !important;
+            transition: all 0.3s ease !important;
+        }
+        /* Botón de traducir (Secundario en Streamlit) */
+        div.stButton > button[key="btn_traducir"] {
+            background-color: #0044ff !important;
+            color: white !important;
+            border: 2px solid #00aaff !important;
+            box-shadow: 0 0 10px #0044ff !important;
+        }
+        div.stButton > button[key="btn_traducir"]:hover {
+            background-color: #0066ff !important;
+            box-shadow: 0 0 20px #00aaff !important;
+        }
+        /* Botón de borrar (Primario en Streamlit) */
+        div.stButton > button[key="btn_borrar"] {
+            background-color: #aa0000 !important;
+            color: white !important;
+            border: 2px solid #ff4444 !important;
+            box-shadow: 0 0 10px #aa0000 !important;
+        }
+        div.stButton > button[key="btn_borrar"]:hover {
+            background-color: #cc0000 !important;
+            box-shadow: 0 0 20px #ff4444 !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -108,7 +137,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-st.write("Sube tus archivos. El sistema cuenta con parches automatizados contra caidas de servidor.")
+st.write("Sube tus archivos de Excel en la sección de abajo para visualizarlos y cambiar su idioma.")
 
 # Clave dinámica para reiniciar por completo el cargador al borrar
 if "uploader_key" not in st.session_state:
@@ -147,31 +176,40 @@ if uploaded_files:
         st.session_state.tablas_render = nuevos_render
         st.session_state.idioma_actual = "Original"
 
-# === 2. PANEL DE INTERFAZ (IDIOMAS Y BORRADO) ===
+# === 2. PANEL DE INTERFAZ (IDIOMAS Y BOTONES DIDÁCTICOS) ===
 if st.session_state.tablas_originales:
+    
+    st.write("### Opciones de traducción y limpieza:")
+    
+    # Selector de idioma grande y claro
+    idioma_seleccionado = st.selectbox(
+        "¿A qué idioma deseas cambiar la información de las tablas?",
+        ("Español (de ingles)", "Ingles (de espanol)"),
+        index=0
+    )
+    
+    st.write("")
     col1, col2 = st.columns(2)
 
     with col1:
-        idioma_seleccionado = st.selectbox(
-            "Selecciona el idioma al que deseas traducir:",
-            ("Español (de ingles)", "Ingles (de espanol)"),
-            index=0
-        )
-        
-        if st.button("Traducir Todas las Tablas", type="secondary"):
+        # BOTÓN DIDÁCTICO DE TRADUCCIÓN CON LLAVE FIJA PARA EL CSS
+        if st.button("PROCESAR Y TRADUCIR TABLAS", key="btn_traducir"):
             target_lang = "es" if idioma_seleccionado == "Español (de ingles)" else "en"
             
-            with st.spinner("Traduciendo registros... Por favor espera..."):
+            with st.spinner("Traduciendo columnas y filas... Por favor espera..."):
                 try:
+                    # Usamos proxies o peticiones directas emuladas a través del cliente configurado
                     translator = GoogleTranslator(source='auto', target=target_lang)
                     
                     def traducir_seguro(val):
                         if pd.isna(val): 
                             return val
                         val_str = str(val).strip()
+                        # Solo enviar textos y descartar números puros o celdas vacías
                         if val_str and not val_str.replace('.', '', 1).isdigit():
                             try:
-                                return translator.translate(val_str)
+                                res = translator.translate(val_str)
+                                return res if res else val
                             except:
                                 return val
                         return val
@@ -179,12 +217,14 @@ if st.session_state.tablas_originales:
                     for nombre_archivo, df_orig in st.session_state.tablas_originales.items():
                         df_traducido = df_orig.copy()
                         
+                        # Traducir los encabezados
                         nuevas_cols = []
                         for col in df_traducido.columns:
                             col_str = str(col).strip()
                             if col_str and not col_str.isdigit():
                                 try:
-                                    nuevas_cols.append(translator.translate(col_str))
+                                    res_col = translator.translate(col_str)
+                                    nuevas_cols.append(res_col if res_col else col_str)
                                 except:
                                     nuevas_cols.append(col_str)
                             else:
@@ -193,47 +233,17 @@ if st.session_state.tablas_originales:
                         df_traducido.columns = nuevas_cols
                         df_traducido = hacer_columnas_unicas(df_traducido)
                         
+                        # Traducir fila por fila de forma segura
                         for col in df_traducido.columns:
-                            df_traducido[col] = df_traducido[col].apply(traducir_seguro)
+                            df_traducido[col] = df_traducido[col].astype(object).apply(traducir_seguro)
                         
                         st.session_state.tablas_render[nombre_archivo] = df_traducido
                     
                     st.session_state.idioma_actual = "Traducido"
-                    st.success("Todas las tablas fueron traducidas con exito")
                     st.rerun()
                 except Exception as error_global:
-                    st.error(f"Error de conexion con el servidor de traduccion. Por favor intenta de nuevo.")
+                    st.error(f"Hubo un inconveniente con el servidor de idioma. Por favor intenta presionar el boton nuevamente.")
 
     with col2:
-        st.write("")
-        st.write("")
-        if st.button("Borrar Todas las Tablas", type="primary"):
-            st.session_state.tablas_originales = {}
-            st.session_state.tablas_render = {}
-            st.session_state.idioma_actual = "Original"
-            st.session_state.uploader_key += 1 
-            st.rerun()
-
-    # === 3. VISTA EN PANTALLA ===
-    st.write("---")
-    st.write(f"Visualizando tablas en modo: **{st.session_state.idioma_actual}**")
-    
-    # Renderizado iterativo de las tablas con diseño azul semi-oscuro integrado
-    for indice, (nombre_archivo, df_tabla) in enumerate(st.session_state.tablas_render.items()):
-        st.markdown(f"""
-            <div class="tabla-contenedor">
-                <div class="tabla-titulo">Tabla {indice + 1}: {nombre_archivo}</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Muestra el DataFrame, el cual adopta las líneas y bordes azul semi-oscuro mediante CSS avanzado
-        st.dataframe(df_tabla, use_container_width=True)
-        st.write("") 
-
-else:
-    if not uploaded_files and st.session_state.tablas_originales:
-        st.session_state.tablas_originales = {}
-        st.session_state.tablas_render = {}
-        st.session_state.idioma_actual = "Original"
-        st.rerun()
-    st.info("Por favor, sube uno o varios archivos Excel para comenzar.")
+        # BOTÓN DIDÁCTICO DE BORRADO CON LLAVE FIJA PARA EL CSS
+Usa el código con precaución.if st.button("BORRAR Y LIMPIAR PANTALLA", key="btn_borrar"):st.session_state.tablas_originales = {}st.session_state.tablas_render = {}st.session_state.idioma_actual = "Original"st.session_state.uploader_key += 1st.rerun()# === 3. VISTA EN PANTALLA ===st.write("---")st.write(f"Estado de los datos mostrados: {st.session_state.idioma_actual}")# Renderizado con contenedores HTML neón y bordes internos adaptadosfor indice, (nombre_archivo, df_tabla) in enumerate(st.session_state.tablas_render.items()):st.markdown(f"""Tabla {indice + 1}: {nombre_archivo}""", unsafe_allow_html=True)st.dataframe(df_tabla, use_container_width=True)st.write("")else:if not uploaded_files and st.session_state.tablas_originales:st.session_state.tablas_originales = {}st.session_state.tablas_render = {}st.session_state.idioma_actual = "Original"st.rerun()st.info("Por favor, sube uno o varios archivos Excel para comenzar.")
