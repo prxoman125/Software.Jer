@@ -39,8 +39,6 @@ if uploaded_file is not None:
   except Exception as e:
     st.error(f"Error al leer el archivo de Excel: {e}")
 
----
-
 # --- 2. SECCIÓN DE ADMINISTRACIÓN Y ELIMINACIÓN DE ARCHIVOS ---
 st.markdown("---")
 st.header("2. Administrar Archivos Guardados")
