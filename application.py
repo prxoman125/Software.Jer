@@ -46,7 +46,8 @@ if uploaded_file is not None and st.session_state.df is None:
 # === 2. Funciones y Botones de Interfaz ===
 if st.session_state.df is not None:
     
-    col1, col2 = st.columns()
+    # SOLUCIÓN: Especificamos explícitamente el número 2 para generar dos columnas
+    col1, col2 = st.columns(2)
 
     with col1:
         # Selector de idioma
@@ -104,7 +105,6 @@ if st.session_state.df is not None:
 
     # === 4. Mostrar la tabla ===
     st.write("### Vista previa de los datos:")
-    # Renderizamos el DataFrame asegurando que no existan conflictos de PyArrow
     st.dataframe(st.session_state.df, use_container_width=True)
 
 else:
