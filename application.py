@@ -5,9 +5,11 @@ from deep_translator import GoogleTranslator
 # Configuración de la página
 st.set_page_config(page_title="Lector y Traductor Multitabla", layout="wide")
 
-# Inicializar las variables de estado para recordar las traducciones
-if "tablas_traducidas" not in st.session_state:
-    st.session_state.tablas_traducidas = {}
+# Inicializar las variables de estado de forma persistente
+if "tablas_originales" not in st.session_state:
+    st.session_state.tablas_originales = {}
+if "tablas_render" not in st.session_state:
+    st.session_state.tablas_render = {}
 if "idioma_actual" not in st.session_state:
     st.session_state.idioma_actual = "Original"
 
@@ -27,10 +29,9 @@ def hacer_columnas_unicas(df):
     return df
 
 st.title("📊 Lector y Traductor de Múltiples Tablas Excel")
-st.write("Sube todos los archivos que quieras. Se mostrarán uno debajo del otro.")
+st.write("Sube todos los archivos que quieras. Se mostrarán uno debajo del otro y se traducirán al presionar el botón.")
 
-# === 1. Selector de Archivos Múltiples ===
-# Usamos una clave (key) para poder resetear el componente con el botón de borrar
+# Clave dinámica para reiniciar por completo el cargador al borrar
 if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0
 
@@ -41,8 +42,38 @@ uploaded_files = st.file_uploader(
     key=f"uploader_{st.session_state.uploader_key}"
 )
 
-# === 2. Panel de Control (Idiomas y Borrado) ===
+# === 1. CAPTURA Y CARGA DE DATOS EN MEMORIA ===
 if uploaded_files:
+    # Verificamos si hay archivos nuevos que no hemos procesado aún
+    archivos_actuales = [f.name for f in uploaded_files]
+    
+    # Si cambió la lista de archivos subidos, sincronizamos el estado interno
+    if set(archivos_actuales) != set(st.session_state.tablas_originales.keys()):
+        nuevos_originales = {}
+        nuevos_render = {}
+        
+        for file in uploaded_files:
+            # Si ya lo teníamos cargado, conservamos lo que había
+            if file.name in st.session_state.tablas_originales:
+                nuevos_originales[file.name] = st.session_state.tablas_originales[file.name]
+                nuevos_render[file.name] = st.session_state.tablas_render[file.name]
+            else:
+                # Si es un archivo nuevo, lo leemos por primera vez
+                try:
+                    df = pd.read_excel(file)
+                    df = hacer_columnas_unicas(df)
+                    nuevos_originales[file.name] = df.copy()
+                    nuevos_render[file.name] = df.copy() # Al inicio es igual al original
+                except Exception as e:
+                    st.error(f"Error al leer el archivo {file.name}: {e}")
+        
+        st.session_state.tablas_originales = nuevos_originales
+        st.session_state.tablas_render = nuevos_render
+        # Si el usuario cambia los archivos, regresamos el estado visual al modo original
+        st.session_state.idioma_actual = "Original"
+
+# === 2. PANEL DE INTERFAZ (IDIOMAS Y BORRADO) ===
+if st.session_state.tablas_originales:
     col1, col2 = st.columns(2)
 
     with col1:
@@ -52,11 +83,11 @@ if uploaded_files:
             index=0
         )
         
-        # Botón para ejecutar la traducción
+        # BOTÓN DE TRADUCCIÓN CORREGIDO
         if st.button("🔄 Traducir Todas las Tablas", type="secondary"):
             target_lang = "es" if idioma_seleccionado == "Español (de inglés)" else "en"
             
-            with st.spinner("Traduciendo todas las tablas en pantalla..."):
+            with st.spinner("Traduciendo celdas y encabezados, por favor espera..."):
                 translator = GoogleTranslator(source='auto', target=target_lang)
                 
                 def traducir_valor(val):
@@ -64,72 +95,57 @@ if uploaded_files:
                         return translator.translate(val)
                     return val
 
-                # Procesamos cada archivo que está subido actualmente
-                for file in uploaded_files:
-                    try:
-                        # Leer archivo original
-                        df = pd.read_excel(file)
-                        df = hacer_columnas_unicas(df)
-                        
-                        # Traducir encabezados
-                        nuevas_cols = []
-                        for col in df.columns:
-                            try:
-                                nuevas_cols.append(translator.translate(str(col)))
-                            except:
-                                nuevas_cols.append(str(col))
-                        df.columns = nuevas_cols
-                        df = hacer_columnas_unicas(df)
-                        
-                        # Traducir celdas
-                        for col in df.columns:
-                            df[col] = df[col].apply(traducir_valor)
-                        
-                        # Guardar resultado en el estado usando el nombre del archivo como clave
-                        st.session_state.tablas_traducidas[file.name] = df
-                    except Exception as e:
-                        st.error(f"Error al traducir {file.name}: {e}")
+                # Traducimos a partir de los datos limpios almacenados en 'tablas_originales'
+                for nombre_archivo, df_orig in st.session_state.tablas_originales.items():
+                    df_traducido = df_orig.copy()
+                    
+                    # Traducir los encabezados
+                    nuevas_cols = []
+                    for col in df_traducido.columns:
+                        try:
+                            nuevas_cols.append(translator.translate(str(col)))
+                        except:
+                            nuevas_cols.append(str(col))
+                    df_traducido.columns = nuevas_cols
+                    df_traducido = hacer_columnas_unicas(df_traducido)
+                    
+                    # Traducir los valores de las celdas
+                    for col in df_traducido.columns:
+                        df_traducido[col] = df_traducido[col].apply(traducir_valor)
+                    
+                    # Guardamos la tabla ya traducida en la variable de renderizado
+                    st.session_state.tablas_render[nombre_archivo] = df_traducido
                 
                 st.session_state.idioma_actual = "Traducido"
-                st.success("¡Traducción completada con éxito!")
+                st.success("¡Todas las tablas fueron traducidas con éxito!")
+                st.rerun() # Forzar actualización inmediata de la interfaz
 
     with col2:
         st.write("")
         st.write("")
-        # Botón para borrar todo y limpiar la pantalla por completo
+        # BOTÓN PARA BORRAR TODO
         if st.button("🗑️ Borrar Todas las Tablas", type="primary"):
-            st.session_state.tablas_traducidas = {}
+            st.session_state.tablas_originales = {}
+            st.session_state.tablas_render = {}
             st.session_state.idioma_actual = "Original"
-            st.session_state.uploader_key += 1  # Cambia la clave para forzar la limpieza del uploader
+            st.session_state.uploader_key += 1 
             st.rerun()
 
-    # === 3. Renderizado de las Tablas en Pantalla ===
+    # === 3. VISTA EN PANTALLA ===
     st.write("---")
     st.write(f"### Visualizando tablas en modo: **{st.session_state.idioma_actual}**")
     
-    # Este ciclo recorre TODOS los archivos cargados en tiempo real y los dibuja uno abajo del otro
-    for indice, file in enumerate(uploaded_files):
-        with st.container():
-            st.markdown(f"#### 📄 Tabla {indice + 1}: `{file.name}`")
-            
-            try:
-                # Si ya fue traducido y está guardado en memoria, muestra la traducción
-                if st.session_state.idioma_actual == "Traducido" and file.name in st.session_state.tablas_traducidas:
-                    df_a_mostrar = st.session_state.tablas_traducidas[file.name]
-                else:
-                    # Si no, lee y muestra el archivo original inmediatamente
-                    df_a_mostrar = pd.read_excel(file)
-                    df_a_mostrar = hacer_columnas_unicas(df_a_mostrar)
-                
-                # Renderiza la tabla en la pantalla
-                st.dataframe(df_a_mostrar, use_container_width=True)
-                st.write("")  # Espacio de separación entre tablas
-                
-            except Exception as e:
-                st.error(f"No se pudo mostrar el archivo {file.name}: {e}")
+    # Recorremos la memoria interna de renderizado de forma ordenada hacia abajo
+    for indice, (nombre_archivo, df_tabla) in enumerate(st.session_state.tablas_render.items()):
+        st.markdown(f"#### 📄 Tabla {indice + 1}: `{nombre_archivo}`")
+        st.dataframe(df_tabla, use_container_width=True)
+        st.write("") 
 
 else:
-    # Si no hay archivos, aseguramos que la memoria esté limpia
-    st.session_state.tablas_traducidas = {}
-    st.session_state.idioma_actual = "Original"
+    # Limpieza automática si se remueven manualmente los archivos de la caja
+    if not uploaded_files and st.session_state.tablas_originales:
+        st.session_state.tablas_originales = {}
+        st.session_state.tablas_render = {}
+        st.session_state.idioma_actual = "Original"
+        st.rerun()
     st.info("Por favor, sube uno o varios archivos Excel para comenzar.")
