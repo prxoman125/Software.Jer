@@ -11,17 +11,33 @@ if "df" not in st.session_state:
 if "df_original" not in st.session_state:
     st.session_state.df_original = None
 
+# Función para asegurar que los nombres de las columnas sean únicos
+def hacer_columnas_unicas(df):
+    cols = []
+    count = {}
+    for col in df.columns:
+        col_str = str(col)  # Asegurar que sea texto
+        if col_str in count:
+            count[col_str] += 1
+            cols.append(f"{col_str}_{count[col_str]}")
+        else:
+            count[col_str] = 0
+            cols.append(col_str)
+    df.columns = cols
+    return df
+
 st.title("📊 Lector y Traductor de Tablas Excel")
 st.write("Sube tu archivo de Excel para visualizarlo, modificar el idioma y gestionar los datos.")
 
 # === 1. Cargar archivo Excel ===
 uploaded_file = st.file_uploader("Sube un archivo Excel (.xlsx)", type=["xlsx"])
 
-if uploaded_file is not None:
+if uploaded_file is not None and st.session_state.df is None:
     # Leer el archivo Excel
     try:
-        st.session_state.df = pd.read_excel(uploaded_file)
-        # Guardamos una copia exacta para poder revertir o retraducir
+        df_leido = pd.read_excel(uploaded_file)
+        # Asegurar columnas únicas desde la carga inicial
+        st.session_state.df = hacer_columnas_unicas(df_leido)
         st.session_state.df_original = st.session_state.df.copy()
         st.success("¡Archivo cargado con éxito!")
     except Exception as e:
@@ -30,8 +46,7 @@ if uploaded_file is not None:
 # === 2. Funciones y Botones de Interfaz ===
 if st.session_state.df is not None:
     
-    # Crear dos columnas para el selector de idioma y el botón de borrar
-    col1, col2 = st.columns([4, 1])
+    col1, col2 = st.columns()
 
     with col1:
         # Selector de idioma
@@ -42,14 +57,13 @@ if st.session_state.df is not None:
         )
 
     with col2:
-        # Espacio en blanco para alinear
         st.write("")
         st.write("")
         # Botón para borrar tablas
         if st.button("🗑️ Borrar Tabla", type="primary"):
             st.session_state.df = None
             st.session_state.df_original = None
-            st.rerun()  # Recarga la app para limpiar la pantalla
+            st.rerun()
 
     # === 3. Lógica de Traducción ===
     if st.session_state.df is not None:
@@ -60,28 +74,37 @@ if st.session_state.df is not None:
 
         if st.button("Traducir Tabla"):
             with st.spinner("Traduciendo el contenido, por favor espera..."):
-                # Instanciamos el traductor
                 translator = GoogleTranslator(source='auto', target=target_lang)
                 
-                # Función para traducir elementos (manejando nulos/números)
                 def traducir_valor(val):
-                    if isinstance(val, str):
+                    if isinstance(val, str) and val.strip():
                         return translator.translate(val)
                     return val
 
-                # Aplicamos la traducción a los encabezados y a todas las celdas
+                # Traducir los encabezados originales
                 df_traducido = st.session_state.df_original.copy()
-                df_traducido.columns = [translator.translate(col) for col in df_traducido.columns]
+                nuevas_columnas = []
+                for col in df_traducido.columns:
+                    try:
+                        nuevas_columnas.append(translator.translate(str(col)))
+                    except:
+                        nuevas_columnas.append(str(col))
                 
+                df_traducido.columns = nuevas_columnas
+                
+                # Forzar que sigan siendo únicas después de la traducción
+                df_traducido = hacer_columnas_unicas(df_traducido)
+                
+                # Traducir las celdas de la tabla
                 for col in df_traducido.columns:
                     df_traducido[col] = df_traducido[col].apply(traducir_valor)
 
-                # Guardamos el df traducido en el estado
                 st.session_state.df = df_traducido
                 st.success("¡Traducción completada!")
 
     # === 4. Mostrar la tabla ===
     st.write("### Vista previa de los datos:")
+    # Renderizamos el DataFrame asegurando que no existan conflictos de PyArrow
     st.dataframe(st.session_state.df, use_container_width=True)
 
 else:
