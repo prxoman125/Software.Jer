@@ -39,6 +39,8 @@ if uploaded_file is not None:
   except Exception as e:
     st.error(f"Error al leer el archivo de Excel: {e}")
 
+---
+
 # --- 2. SECCIÓN DE ADMINISTRACIÓN Y ELIMINACIÓN DE ARCHIVOS ---
 st.markdown("---")
 st.header("2. Administrar Archivos Guardados")
@@ -51,12 +53,10 @@ if not saved_files:
 else:
   st.write("Selecciona los archivos que deseas eliminar:")
 
-  # Crear un formulario o checkboxes para seleccionar archivos
-  files_to_delete = []
-  for file_name in saved_files:
-    # Usamos un checkbox para cada archivo disponible
-    if st.checkbox(file_name, key=file_name):
-      files_to_delete.append(file_name)
+  # Usar multiselect en lugar de checkboxes individuales previene errores de estado
+  files_to_delete = st.multiselect(
+      "Archivos disponibles para borrar:", saved_files
+  )
 
   # Botón para ejecutar la eliminación
   if st.button("🗑️ Borrar archivos seleccionados", type="primary"):
@@ -64,11 +64,13 @@ else:
       for file_name in files_to_delete:
         file_path = os.path.join(UPLOAD_DIR, file_name)
         try:
-          os.remove(file_path)
-          st.success(f"Archivo eliminado: {file_name}")
+          if os.path.exists(file_path):
+            os.remove(file_path)
+            st.success(f"Archivo eliminado: {file_name}")
         except Exception as e:
           st.error(f"No se pudo eliminar {file_name}: {e}")
-      # Recargar la página para actualizar la lista de archivos
+
+      # Actualiza la interfaz limpiamente
       st.rerun()
     else:
-      st.warning("Por favor, selecciona al menos un archivo para borrar.")
+      st.warning("Por favor, selecciona al menos un archivo en la lista.")
