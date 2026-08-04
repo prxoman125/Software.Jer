@@ -21,23 +21,20 @@ st.markdown(
 st.sidebar.header("⚙️ Configuración General")
 moneda_seleccionada = st.sidebar.selectbox(
     "Selecciona la Moneda:",
-    ["Dólares ($ USD)", "Pesos Mexicanos ($ MXN)", "Euros (€ EUR)"],
+    ["Dólares ($ USD)", "Pesos Mexicanos ($ MXN)"],
 )
 
-# Definir símbolo y tasas de conversión base aproximadas (puedes ajustarlas según necesites)
+# Definir símbolo y tasas de conversión base aproximadas
 if "USD" in moneda_seleccionada:
   simbolo = "$"
   tasa_cambio = 1.0
-elif "MXN" in moneda_seleccionada:
-  simbolo = "$"
-  tasa_cambio = 17.5  # Ejemplo: 1 USD = 17.5 MXN
 else:
-  simbolo = "€"
-  tasa_cambio = 0.92  # Ejemplo: 1 USD = 0.92 EUR
+  simbolo = "$"
+  tasa_cambio = 18.0  # Tasa base de referencia USD a MXN
 
-st.sidebar.markdown(f"**Moneda activa:** {moneda_seleccionada} ({simbolo})")
+st.sidebar.markdown(f"**Moneda activa:** {moneda_seleccionada}")
 
-# Menú de navegación en la barra lateral
+# Menú de navegación ampliado en la barra lateral
 st.sidebar.header("Menú de Navegación")
 sector = st.sidebar.selectbox(
     "Elige un Sector:",
@@ -46,6 +43,8 @@ sector = st.sidebar.selectbox(
         "🏢 Productividad y Gestión",
         "🏋️ Salud, Fitness y Nutrición",
         "📱 Creadores y Marketing",
+        "🏡 Inmuebles y Bienes Raíces",
+        "🎓 Educación y Cursos Online",
     ],
 )
 
@@ -462,4 +461,201 @@ elif sector == "📱 Creadores y Marketing":
       st.info(
           "Este valor pondera tu audiencia base y el valor del sector comercial"
           " al que te diriges."
+      )
+
+# ==========================================
+# SECTOR 5: INMUEBLES Y BIENES RAÍCES (NUEVO)
+# ==========================================
+elif sector == "🏡 Inmuebles y Bienes Raíces":
+  st.header("🏡 Inmuebles y Bienes Raíces")
+  herramienta_inmo = st.selectbox(
+      "Selecciona la herramienta:",
+      [
+          "Calculador de Rentabilidad de Inversión Inmobiliaria (ROI / Cap Rate)",
+          "Calculador de Capacidad de Crédito Hipotecario",
+      ],
+  )
+
+  if (
+      herramienta_inmo
+      == "Calculador de Rentabilidad de Inversión Inmobiliaria (ROI / Cap Rate)"
+  ):
+    st.subheader("🏢 Rentabilidad Inmobiliaria (Cap Rate & Cash-on-Cash)")
+    col1, col2 = st.columns(2)
+    with col1:
+      precio_propiedad = st.number_input(
+          f"Precio de compra del inmueble ({simbolo})",
+          min_value=0.0,
+          value=150000.0 * tasa_cambio,
+      )
+      renta_mensual = st.number_input(
+          f"Ingreso por renta mensual esperada ({simbolo})",
+          min_value=0.0,
+          value=1200.0 * tasa_cambio,
+      )
+    with col2:
+      gastos_anuales_mantenimiento = st.number_input(
+          f"Gastos anuales (predial, mantenimiento, seguro) ({simbolo})",
+          min_value=0.0,
+          value=2000.0 * tasa_cambio,
+      )
+      porcentaje_vacancia = (
+          st.number_input(
+              "Estimación de vacancia / meses sin alquilar (%)", value=5.0
+          )
+          / 100
+      )
+
+    if st.button("Calcular Rentabilidad Inmobiliaria"):
+      ingreso_bruto_anual = renta_mensual * 12
+      ingreso_efectivo_anual = ingreso_bruto_anual * (
+          1 - porcentaje_vacancia
+      )
+      ingreso_neto_operativo = ingreso_efectivo_anual - gastos_anuales_mantenimiento
+      cap_rate = (
+          (ingreso_neto_operativo / precio_propiedad) * 100
+          if precio_propiedad > 0
+          else 0
+      )
+
+      st.success(
+          f"### Ingreso Neto Operativo Anual (NOI):"
+          f" {simbolo}{ingreso_neto_operativo:,.2f}"
+      )
+      st.metric(label="Tasa de Capitalización (Cap Rate)", value=f"{cap_rate:.2f}%")
+
+  elif herramienta_inmo == "Calculador de Capacidad de Crédito Hipotecario":
+    st.subheader("🏦 Simulación de Crédito Hipotecario")
+    col1, col2 = st.columns(2)
+    with col1:
+      ingreso_mensual_hogar = st.number_input(
+          f"Ingreso neto mensual del hogar ({simbolo})",
+          min_value=0.0,
+          value=3000.0 * tasa_cambio,
+      )
+      tasa_interes_anual = (
+          st.number_input("Tasa de interés anual del crédito (%)", value=10.5)
+          / 100
+      )
+    with col2:
+      plazo_anios = st.selectbox(
+          "Plazo del crédito (Años)", [10, 15, 20, 25, 30], index=2
+      )
+      capacidad_pago_pct = (
+          st.number_input(
+              "Porcentaje máximo de ingresos destinado a la mensualidad (%)",
+              value=30.0,
+          )
+          / 100
+      )
+
+    if st.button("Calcular Crédito Máximo"):
+      pago_mensual_max = ingreso_mensual_hogar * capacidad_pago_pct
+      n_meses = plazo_anios * 12
+      i_mes = tasa_interes_anual / 12
+
+      # Fórmula de valor presente para calcular el monto del préstamo
+      if i_mes > 0:
+        monto_prestamo = pago_mensual_max * (
+            (1 - (1 + i_mes) ** -n_meses) / i_mes
+        )
+      else:
+        monto_prestamo = pago_mensual_max * n_meses
+
+      st.success(
+          f"### Monto máximo de crédito estimado:"
+          f" {simbolo}{monto_prestamo:,.2f}"
+      )
+      st.info(
+          f"Tu mensualidad estimada sería de {simbolo}{pago_mensual_max:,.2f}"
+          f" durante {plazo_anios} años."
+      )
+
+# ==========================================
+# SECTOR 6: EDUCACIÓN Y CURSOS ONLINE (NUEVO)
+# ==========================================
+elif sector == "🎓 Educación y Cursos Online":
+  st.header("🎓 Educación y Cursos Online")
+  herramienta_edu = st.selectbox(
+      "Selecciona la herramienta:",
+      [
+          "Calculador de Rentabilidad para Lanzamientos de Cursos",
+          "Calculador de Tiempo de Estudio y Retención de Alumnos",
+      ],
+  )
+
+  if herramienta_edu == "Calculador de Rentabilidad para Lanzamientos de Cursos":
+    st.subheader("🚀 Proyección Financiera de Lanzamiento de Info-productos")
+    col1, col2 = st.columns(2)
+    with col1:
+      tamano_audiencia = st.number_input(
+          "Tamaño de tu lista de correo / seguidores interesados",
+          min_value=0,
+          value=5000,
+      )
+      tasa_conversion_venta = (
+          st.number_input(
+              "Tasa de conversión de venta estimada (%)", value=1.5
+          )
+          / 100
+      )
+    with col2:
+      precio_curso = st.number_input(
+          f"Precio de venta del curso ({simbolo})",
+          min_value=0.0,
+          value=197.0 * tasa_cambio,
+      )
+      inversion_ads_lanzamiento = st.number_input(
+          f"Inversión en publicidad para el lanzamiento ({simbolo})",
+          min_value=0.0,
+          value=1000.0 * tasa_cambio,
+      )
+
+    if st.button("Calcular Proyección de Lanzamiento"):
+      ventas_estimadas = int(tamano_audiencia * tasa_conversion_venta)
+      ingresos_totales = ventas_estimadas * precio_curso
+      beneficio_neto = ingresos_totales - inversion_ads_lanzamiento
+      roas = (
+          ingresos_totales / inversion_ads_lanzamiento
+          if inversion_ads_lanzamiento > 0
+          else 0
+      )
+
+      st.success(f"### Ventas estimadas: {ventas_estimadas} alumnos")
+      col_a, col_b = st.columns(2)
+      col_a.metric(
+          label="Ingresos Totales", value=f"{simbolo}{ingresos_totales:,.2f}"
+      )
+      col_b.metric(label="ROAS (Retorno de Anuncios)", value=f"{roas:.2f}x")
+
+  elif herramienta_edu == "Calculador de Tiempo de Estudio y Retención de Alumnos":
+    st.subheader("📚 Planificador de Contenido y Tiempos de Estudio")
+    col1, col2 = st.columns(2)
+    with col1:
+      duracion_video_total_horas = st.number_input(
+          "Duración total del contenido en video (horas)",
+          min_value=0.1,
+          value=10.0,
+      )
+      factor_practica = st.number_input(
+          "Multiplicador de práctica/ejercicios (ej. 2x el tiempo de video)",
+          min_value=1.0,
+          value=2.0,
+      )
+    with col2:
+      semanas_programa = st.number_input(
+          "Duración del programa en semanas", min_value=1, value=6
+      )
+
+    if st.button("Calcular Carga Semanal"):
+      horas_totales_estimadas = duracion_video_total_horas * factor_practica
+      horas_por_semana = horas_totales_estimadas / semanas_programa
+
+      st.success(
+          f"### Dedicación semanal requerida: {horas_por_semana:.1f} horas/semana"
+      )
+      st.info(
+          "Esto equivale a aproximadamente"
+          f" **{horas_por_semana / 5:.1f} horas al día** si el alumno estudia"
+          " de lunes a viernes."
       )
