@@ -1,101 +1,76 @@
+import os
 import pandas as pd
 import streamlit as st
 
-st.title("Administrador y Visualizador de Tablas de Excel")
+# Configuración de la página
+st.set_page_config(
+    page_title="Gestor de Archivos Excel", page_icon="📊", layout="wide"
+)
+
+st.title("📊 Gestor y Visualizador de Archivos Excel")
 st.write(
-    "Sube tus archivos de Excel. Selecciona las casillas de las tablas que"
-    " deseas eliminar y presiona el botón de borrado."
+    "Sube tus archivos de Excel para visualizarlos y administra los archivos almacenados."
 )
 
-# Widget para subir archivos
-uploaded_files = st.file_uploader(
-    "Elige tus archivos de Excel", type=["xlsx", "xls"], accept_multiple_files=True
+# Directorio donde se guardarán los archivos subidos
+UPLOAD_DIR = "uploaded_files"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
+# --- 1. SECCIÓN DE SUBIDA DE ARCHIVOS ---
+st.header("1. Subir Archivo Excel")
+uploaded_file = st.file_uploader(
+    "Elige un archivo de Excel", type=["xlsx", "xls"]
 )
 
-# Inicializar la memoria de sesión si no existe
-if "loaded_sheets" not in st.session_state:
-  st.session_state.loaded_sheets = {}
+if uploaded_file is not None:
+  # Guardar el archivo físicamente en el directorio
+  file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
+  with open(file_path, "wb") as f:
+    f.write(uploaded_file.getbuffer())
 
-# Procesar archivos subidos unicamente si hay archivos nuevos
-if uploaded_files:
-  current_file_names = {f.name for f in uploaded_files}
+  st.success(f"¡Archivo '{uploaded_file.name}' subido con éxito!")
 
-  # Cargar hojas nuevas
-  for uploaded_file in uploaded_files:
-    try:
-      excel_file = pd.ExcelFile(uploaded_file)
-      for sheet_name in excel_file.sheet_names:
-        key = f"{uploaded_file.name} -> {sheet_name}"
-        # Si la tabla no está en memoria, la cargamos
-        if key not in st.session_state.loaded_sheets:
-          df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
-          st.session_state.loaded_sheets[key] = df
-    except Exception as e:
-      st.error(f"Error al leer {uploaded_file.name}: {e}")
+  # Leer el archivo con pandas y mostrarlo abajo
+  try:
+    df = pd.read_excel(file_path)
+    st.subheader(f"Vista previa de: {uploaded_file.name}")
+    st.dataframe(df)
+  except Exception as e:
+    st.error(f"Error al leer el archivo de Excel: {e}")
 
-  # Remover de la memoria los archivos que el usuario borró del uploader
-  keys_to_drop = []
-  for key in st.session_state.loaded_sheets.keys():
-    file_name_in_key = key.split(" -> ")[0]
-    if file_name_in_key not in current_file_names:
-      keys_to_drop.append(key)
-  for k in keys_to_drop:
-    del st.session_state.loaded_sheets[k]
+---
 
+# --- 2. SECCIÓN DE ADMINISTRACIÓN Y ELIMINACIÓN DE ARCHIVOS ---
+st.markdown("---")
+st.header("2. Administrar Archivos Guardados")
+
+# Listar todos los archivos en el directorio de subidas
+saved_files = os.listdir(UPLOAD_DIR)
+
+if not saved_files:
+  st.info("No hay archivos guardados actualmente.")
 else:
-  # Si se borraron todos los archivos del uploader, limpiamos la memoria por completo
-  st.session_state.loaded_sheets = {}
+  st.write("Selecciona los archivos que deseas eliminar:")
 
-# Mostrar las tablas y permitir su eliminación
-if st.session_state.loaded_sheets:
-  st.subheader("Tablas en Memoria")
+  # Crear un formulario o checkboxes para seleccionar archivos
+  files_to_delete = []
+  for file_name in saved_files:
+    # Usamos un checkbox para cada archivo disponible
+    if st.checkbox(file_name, key=file_name):
+      files_to_delete.append(file_name)
 
-  # Crear una lista de control para seleccionar qué borrar
-  selection_data = []
-  for key in list(st.session_state.loaded_sheets.keys()):
-    selection_data.append({"Seleccionar": False, "Tabla / Hoja": key})
-
-  df_selection = pd.DataFrame(selection_data)
-
-  # Usar un editor de datos interactivo para marcar con palomitas de forma segura
-  edited_df = st.data_editor(
-      df_selection,
-      column_config={
-          "Seleccionar": st.column_config.CheckboxColumn(
-              "Borrar?",
-              help="Marca la casilla de la tabla que deseas eliminar",
-              default=False,
-          )
-      },
-      disabled=["Tabla / Hoja"],
-      hide_index=True,
-      use_container_width=True,
-  )
-
-  # Botón para aplicar el borrado de las filas marcadas
-  if st.button("Eliminar tablas seleccionadas"):
-    # Obtener las claves que tienen la casilla marcada como True
-    keys_to_delete = edited_df.loc[
-        edited_df["Seleccionar"] == True, "Tabla / Hoja"
-    ].tolist()
-
-    if keys_to_delete:
-      for key in keys_to_delete:
-        if key in st.session_state.loaded_sheets:
-          del st.session_state.loaded_sheets[key]
-      st.success("Tablas eliminadas exitosamente.")
+  # Botón para ejecutar la eliminación
+  if st.button("🗑️ Borrar archivos seleccionados", type="primary"):
+    if files_to_delete:
+      for file_name in files_to_delete:
+        file_path = os.path.join(UPLOAD_DIR, file_name)
+        try:
+          os.remove(file_path)
+          st.success(f"Archivo eliminado: {file_name}")
+        except Exception as e:
+          st.error(f"No se pudo eliminar {file_name}: {e}")
+      # Recargar la página para actualizar la lista de archivos
       st.rerun()
     else:
-      st.warning("No seleccionaste ninguna tabla para borrar.")
-
-  st.divider()
-
-  # Mostrar el contenido visual de cada tabla restante
-  for key, df in st.session_state.loaded_sheets.items():
-    st.markdown(f"**Visualizando: {key}**")
-    st.write(f"Dimensiones -> Filas: {df.shape[0]} | Columnas: {df.shape[1]}")
-    st.dataframe(df)
-    st.divider()
-
-else:
-  st.info("Sube uno o varios archivos de Excel para comenzar.")
+      st.warning("Por favor, selecciona al menos un archivo para borrar.")
