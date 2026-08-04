@@ -1,70 +1,46 @@
 import pandas as pd
 import streamlit as st
 
-st.title("Administrador y Visualizador de Tablas de Excel")
+st.title("Visualizador de Archivos de Excel")
 st.write(
-    "Sube archivos de Excel, visualiza sus hojas y elimina las que desees"
-    " usando el botón correspondiente."
+    "Sube uno o varios archivos de Excel (.xlsx o .xls) para ver su contenido en tablas."
 )
+
+# Inicializar el estado de la sesión para los archivos si no existe
+if "uploaded_files_cache" not in st.session_state:
+  st.session_state.uploaded_files_cache = None
 
 # Widget para subir archivos
 uploaded_files = st.file_uploader(
-    "Elige tus archivos de Excel", type=["xlsx", "xls"], accept_multiple_files=True
+    "Elige tus archivos de Excel",
+    type=["xlsx", "xls"],
+    accept_multiple_files=True,
+    key="file_uploader",
 )
 
-# Inicializar el estado de la sesión para las tablas cargadas
-if "loaded_sheets" not in st.session_state:
-  st.session_state.loaded_sheets = {}
-
+# Actualizar la caché si se suben nuevos archivos
 if uploaded_files:
-  # Cargar o actualizar las hojas en la sesión basadas en los archivos subidos
-  current_keys = []
-  for uploaded_file in uploaded_files:
+  st.session_state.uploaded_files_cache = uploaded_files
+
+# Botón para borrar las tablas generadas
+if st.session_state.uploaded_files_cache:
+  if st.button("🗑️ Borrar tablas y limpiar"):
+    st.session_state.uploaded_files_cache = None
+    # Forzar la recarga para limpiar el file_uploader y la pantalla
+    st.rerun()
+
+# Mostrar las tablas si hay archivos en la caché
+if st.session_state.uploaded_files_cache:
+  for uploaded_file in st.session_state.uploaded_files_cache:
+    st.subheader(f"Archivo: {uploaded_file.name}")
+
     try:
-      excel_file = pd.ExcelFile(uploaded_file)
-      for sheet_name in excel_file.sheet_names:
-        key = f"{uploaded_file.name} - Hoja: {sheet_name}"
-        current_keys.append(key)
-        if key not in st.session_state.loaded_sheets:
-          df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
-          st.session_state.loaded_sheets[key] = df
-    except Exception as e:
-      st.error(f"Error al procesar el archivo {uploaded_file.name}: {e}")
-
-  # Opcional: limpiar tablas de archivos que ya fueron removidos del uploader
-  keys_to_remove = [
-      k
-      for k in st.session_state.loaded_sheets.keys()
-      if not any(k.startswith(f.name) for f in uploaded_files)
-  ]
-  for k in keys_to_remove:
-    del st.session_state.loaded_sheets[k]
-
-# Verificar si hay tablas en memoria
-if st.session_state.loaded_sheets:
-  st.subheader("Tablas Actuales en Memoria")
-  st.write(
-      "Puedes eliminar cualquier tabla haciendo clic en el botón rojo"
-      " correspondiente."
-  )
-
-  # Creamos una copia de las claves para iterar de forma segura mientras modificamos el diccionario
-  for key, df in list(st.session_state.loaded_sheets.items()):
-    col1, col2 = st.columns([4, 1])
-
-    with col1:
-      st.markdown(f"**{key}**")
+      df = pd.read_excel(uploaded_file)
       st.write(f"Filas: {df.shape[0]} | Columnas: {df.shape[1]}")
+      st.dataframe(df)
+      st.divider()
 
-    with col2:
-      # Botón único por tabla para eliminarla inmediatamente sin conflictos de estado
-      if st.button("Borrar", key=f"del_{key}"):
-        del st.session_state.loaded_sheets[key]
-        st.rerun()
-
-    st.dataframe(df)
-    st.divider()
+    except Exception as e:
+      st.error(f"Ocurrió un error al leer el archivo {uploaded_file.name}: {e}")
 else:
-  st.info(
-      "No hay tablas cargadas. Por favor, sube uno o varios archivos de Excel."
-  )
+  st.info("Esperando a que subas al menos un archivo de Excel.")
