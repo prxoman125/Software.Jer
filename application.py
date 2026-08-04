@@ -47,8 +47,10 @@ if uploaded_files:
     # Verificamos si hay archivos nuevos que no hemos procesado aún
     archivos_actuales = [f.name for f in uploaded_files]
     
-    # Si cambió la lista de archivos subidos, sincronizamos el estado interno
-    if set(archivos_actuales) != set(st.session_state.tablas_originales.keys()):
+    # SOLUCIÓN: Convertimos las llaves a lista explícitamente para evitar el AttributeError
+    llaves_guardadas = list(st.session_state.tablas_originales.keys())
+    
+    if set(archivos_actuales) != set(llaves_guardadas):
         nuevos_originales = {}
         nuevos_render = {}
         
@@ -83,7 +85,7 @@ if st.session_state.tablas_originales:
             index=0
         )
         
-        # BOTÓN DE TRADUCCIÓN CORREGIDO
+        # Botón de traducción masiva
         if st.button("🔄 Traducir Todas las Tablas", type="secondary"):
             target_lang = "es" if idioma_seleccionado == "Español (de inglés)" else "en"
             
@@ -123,7 +125,7 @@ if st.session_state.tablas_originales:
     with col2:
         st.write("")
         st.write("")
-        # BOTÓN PARA BORRAR TODO
+        # Botón para borrar todo
         if st.button("🗑️ Borrar Todas las Tablas", type="primary"):
             st.session_state.tablas_originales = {}
             st.session_state.tablas_render = {}
