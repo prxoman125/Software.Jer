@@ -77,15 +77,6 @@ st.markdown(
             margin-bottom: 15px;
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
         }
-        .table-header-text {
-            color: #38bdf8 !important;
-            font-weight: 600 !important;
-            font-size: 16px !important;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
 
         /* Paneles laterales / Configuración */
         .css-1d391kg, [data-testid="stSidebar"] {
@@ -200,7 +191,6 @@ with st.sidebar:
       index=0,
   )
 
-  # Selección inteligente de columnas a excluir (ej. columnas numéricas, IDs)
   excluir_numericas = st.checkbox(
       "Excluir automáticamente columnas numéricas/IDs",
       value=True,
@@ -236,19 +226,18 @@ if uploaded_files:
         nuevos_render[file.name] = st.session_state.tablas_render[file.name]
       else:
         try:
-          # Leer todas las hojas del archivo Excel en un diccionario de DataFrames
-            xls = pd.ExcelFile(file)
-            sheets_dict = {}
-            sheets_render_dict = {}
-            for sheet in xls.sheet_names:
-              df = pd.read_excel(file, sheet_name=sheet)
-              if not df.empty:
-                df = hacer_columnas_unicas(df)
-                sheets_dict[sheet] = df.copy()
-                sheets_render_dict[sheet] = df.copy()
-            if sheets_dict:
-              nuevos_originales[file.name] = sheets_dict
-              nuevos_render[file.name] = sheets_render_dict
+          xls = pd.ExcelFile(file)
+          sheets_dict = {}
+          sheets_render_dict = {}
+          for sheet in xls.sheet_names:
+            df = pd.read_excel(file, sheet_name=sheet)
+            if not df.empty:
+              df = hacer_columnas_unicas(df)
+              sheets_dict[sheet] = df.copy()
+              sheets_render_dict[sheet] = df.copy()
+          if sheets_dict:
+            nuevos_originales[file.name] = sheets_dict
+            nuevos_render[file.name] = sheets_render_dict
         except Exception as e:
           st.sidebar.error(f"Error al leer {file.name}: {e}")
 
@@ -274,7 +263,6 @@ if btn_traducir and st.session_state.tablas_originales:
   try:
     translator = GoogleTranslator(source=source_lang, target=target_lang)
 
-    # Calcular total de elementos para la barra de progreso global
     total_celdas_aprox = 0
     for f_name, sheets in st.session_state.tablas_originales.items():
       for s_name, df in sheets.items():
@@ -318,9 +306,8 @@ if btn_traducir and st.session_state.tablas_originales:
         df_traducido.columns = nuevas_cols
         df_traducido = hacer_columnas_unicas(df_traducido)
 
-        # 2. Traducir Celdas por columnas de forma inteligente
+        # 2. Traducir Celdas por columnas
         for col in df_traducido.columns:
-          # Si se solicita excluir numéricas y la columna es de tipo numérico, se omite
           if excluir_numericas and pd.api.types.is_numeric_dtype(
               df_traducido[col]
           ):
@@ -361,7 +348,6 @@ if btn_traducir and st.session_state.tablas_originales:
 # CUERPO PRINCIPAL - VISUALIZACIÓN Y MÉTRICAS
 # ==========================================
 if st.session_state.tablas_originales:
-  # Opciones globales de descarga ZIP si hay más de un archivo o varias hojas
   st.markdown("### 📥 Panel de Exportación Masiva")
   zip_bytes = crear_zip_masivo(st.session_state.tablas_render)
   st.download_button(
@@ -383,18 +369,18 @@ if st.session_state.tablas_originales:
         unsafe_allow_html=True,
     )
 
-    # Selector de pestañas (Sheets) si el archivo contiene múltiples hojas
+    # CORRECCIÓN DE SELECCIÓN DE HOJAS
     sheet_names = list(sheets.keys())
-    sheet_seleccionada = (
-        st.selectbox(
-            f"Seleccionar Hoja para '{nombre_archivo}':",
-            sheet_names,
-            key=f"sheet_select_{nombre_archivo}",
-        )
-        if len(sheet_names) > 1
-        else sheet_names
-    )
+    if len(sheet_names) > 1:
+      sheet_seleccionada = st.selectbox(
+          f"Seleccionar Hoja para '{nombre_archivo}':",
+          sheet_names,
+          key=f"sheet_select_{nombre_archivo}",
+      )
+    else:
+      sheet_seleccionada = sheet_names[0]
 
+    # Obtenemos el DataFrame de forma segura
     df_tabla = sheets[sheet_seleccionada]
 
     # Panel Métricas Básicas (st.metric)
@@ -418,27 +404,19 @@ if st.session_state.tablas_originales:
 
     df_filtrado = df_tabla.copy()
     if busqueda:
-      # Filtrar de manera insensible a mayúsculas/minúsculas en cualquier columna de tipo texto/string
       mask = df_filtrado.astype(str).apply(
           lambda col: col.str.contains(busqueda, case=False, na=False)
       ).any(axis=1)
       df_filtrado = df_filtrado[mask]
 
     # Renderizado de Tabla con Contenedor Profesional Estilizado
-    st.markdown(
-        """
-        <div class="table-card">
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="table-card">', unsafe_allow_html=True)
     st.dataframe(df_filtrado, use_container_width=True, height=350)
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Botón de descarga individual por hoja/tabla
     excel_data_single = convertir_df_a_excel(df_filtrado)
-    nombre_salida = (
-        f"traducido_{nombre_archivo.replace('.xlsx', '')}_{sheet_seleccionada}.xlsx"
-    )
+    nombre_salida = f"traducido_{nombre_archivo.replace('.xlsx', '')}_{sheet_seleccionada}.xlsx"
 
     st.download_button(
         label=f"📥 Descargar Hoja '{sheet_seleccionada}' en Excel",
@@ -452,7 +430,6 @@ if st.session_state.tablas_originales:
     st.markdown("---")
 
 else:
-  # Estado inicial vacío
   st.info(
       "💡 Para comenzar, utiliza el panel lateral izquierdo para subir uno o"
       " varios archivos con formato Excel (.xlsx)."
