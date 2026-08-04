@@ -1,5 +1,5 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
 # Configuración de la página
 st.set_page_config(
@@ -11,8 +11,31 @@ st.set_page_config(
 # Estilo principal
 st.title("🧮 Suite Interactiva de Calculadoras Especializadas")
 st.markdown(
-    "Selecciona un sector y una herramienta en la barra lateral para comenzar."
+    "Selecciona un sector, una herramienta y tu moneda preferida en la barra"
+    " lateral para comenzar."
 )
+
+# ==========================================
+# CONFIGURACIÓN DE MONEDA EN LA BARRA LATERAL
+# ==========================================
+st.sidebar.header("⚙️ Configuración General")
+moneda_seleccionada = st.sidebar.selectbox(
+    "Selecciona la Moneda:",
+    ["Dólares ($ USD)", "Pesos Mexicanos ($ MXN)", "Euros (€ EUR)"],
+)
+
+# Definir símbolo y tasas de conversión base aproximadas (puedes ajustarlas según necesites)
+if "USD" in moneda_seleccionada:
+  simbolo = "$"
+  tasa_cambio = 1.0
+elif "MXN" in moneda_seleccionada:
+  simbolo = "$"
+  tasa_cambio = 17.5  # Ejemplo: 1 USD = 17.5 MXN
+else:
+  simbolo = "€"
+  tasa_cambio = 0.92  # Ejemplo: 1 USD = 0.92 EUR
+
+st.sidebar.markdown(f"**Moneda activa:** {moneda_seleccionada} ({simbolo})")
 
 # Menú de navegación en la barra lateral
 st.sidebar.header("Menú de Navegación")
@@ -44,11 +67,16 @@ if sector == "📊 Finanzas y Emprendimiento":
     st.subheader("💼 Calculador de Tarifas para Freelancers")
     col1, col2 = st.columns(2)
     with col1:
-      gastos_mes = st.number_input(
-          "Gastos fijos mensuales ($)", min_value=0.0, value=800.0, step=50.0
+      gastos_mes_base = st.number_input(
+          f"Gastos fijos mensuales ({simbolo})",
+          min_value=0.0,
+          value=800.0 * tasa_cambio,
+          step=50.0,
       )
       impuestos_pct = (
-          st.number_input("Estimación de impuestos (%)", min_value=0.0, value=20.0, step=1.0)
+          st.number_input(
+              "Estimación de impuestos (%)", min_value=0.0, value=20.0, step=1.0
+          )
           / 100
       )
     with col2:
@@ -56,21 +84,28 @@ if sector == "📊 Finanzas y Emprendimiento":
           "Horas de trabajo a la semana", min_value=1, value=30, step=1
       )
       margen_ganancia = (
-          st.number_input("Margen de ganancia deseado (%)", min_value=0.0, value=25.0, step=5.0)
+          st.number_input(
+              "Margen de ganancia deseado (%)",
+              min_value=0.0,
+              value=25.0,
+              step=5.0,
+          )
           / 100
       )
 
     if st.button("Calcular Tarifa"):
       semanas_mes = 4.33
       horas_mes = horas_semana * semanas_mes
-      costo_con_margen = gastos_mes * (1 + margen_ganancia)
+      costo_con_margen = gastos_mes_base * (1 + margen_ganancia)
       ingreso_necesario = costo_con_margen / (1 - impuestos_pct)
       tarifa_hora = ingreso_necesario / horas_mes if horas_mes > 0 else 0
 
-      st.success(f"### Tarifa recomendada por hora: ${tarifa_hora:.2f}")
+      st.success(
+          f"### Tarifa recomendada por hora: {simbolo}{tarifa_hora:.2f}"
+      )
       st.info(
-          f"Necesitas ingresar un total de ${ingreso_necesario:.2f} al mes para"
-          " cubrir tus metas, impuestos y gastos."
+          f"Necesitas ingresar un total de {simbolo}{ingreso_necesario:.2f} al"
+          " mes para cubrir tus metas, impuestos y gastos."
       )
 
   elif herramienta_fin == "Calculador de rentabilidad para E-commerce":
@@ -78,19 +113,25 @@ if sector == "📊 Finanzas y Emprendimiento":
     col1, col2 = st.columns(2)
     with col1:
       costo_prod = st.number_input(
-          "Costo de adquisición del producto ($)", min_value=0.0, value=10.0
+          f"Costo de adquisición del producto ({simbolo})",
+          min_value=0.0,
+          value=10.0 * tasa_cambio,
       )
       precio_venta = st.number_input(
-          "Precio de venta al público ($)", min_value=0.0, value=35.0
+          f"Precio de venta al público ({simbolo})",
+          min_value=0.0,
+          value=35.0 * tasa_cambio,
       )
       envio = st.number_input(
-          "Costo de envío/logística ($)", min_value=0.0, value=5.0
+          f"Costo de envío/logística ({simbolo})",
+          min_value=0.0,
+          value=5.0 * tasa_cambio,
       )
     with col2:
       cac = st.number_input(
-          "Costo por Adquisición (CAC / Publicidad por unidad) ($)",
+          f"Costo por Adquisición (CAC / Publicidad por unidad) ({simbolo})",
           min_value=0.0,
-          value=8.0,
+          value=8.0 * tasa_cambio,
       )
       comision_pasarela_pct = (
           st.number_input("Comisión de pasarela de pago (%)", value=3.5) / 100
@@ -98,13 +139,13 @@ if sector == "📊 Finanzas y Emprendimiento":
 
     if st.button("Calcular Rentabilidad"):
       comision_monto = precio_venta * comision_pasarela_pct
-      costos_totales = (
-          costo_prod + envio + cac + comision_monto
-      )
+      costos_totales = costo_prod + envio + cac + comision_monto
       margen_neto = precio_venta - costos_totales
       roi_pct = (margen_neto / costos_totales) * 100 if costos_totales > 0 else 0
 
-      st.success(f"### Margen Neto Real por Unidad: ${margen_neto:.2f}")
+      st.success(
+          f"### Margen Neto Real por Unidad: {simbolo}{margen_neto:.2f}"
+      )
       st.metric(label="ROI de la venta", value=f"{roi_pct:.2f}%")
 
   elif herramienta_fin == "Calculador de Libertad Financiera (FIRE)":
@@ -112,9 +153,9 @@ if sector == "📊 Finanzas y Emprendimiento":
     col1, col2 = st.columns(2)
     with col1:
       gasto_anual = st.number_input(
-          "Gastos anuales estimados en el retiro ($)",
+          f"Gastos anuales estimados en el retiro ({simbolo})",
           min_value=0.0,
-          value=24000.0,
+          value=24000.0 * tasa_cambio,
       )
       tasa_retiro = (
           st.number_input(
@@ -124,7 +165,9 @@ if sector == "📊 Finanzas y Emprendimiento":
       )
     with col2:
       inversion_actual = st.number_input(
-          "Patrimonio invertido actual ($)", min_value=0.0, value=5000.0
+          f"Patrimonio invertido actual ({simbolo})",
+          min_value=0.0,
+          value=5000.0 * tasa_cambio,
       )
       rendimiento_anual = (
           st.number_input(
@@ -137,9 +180,13 @@ if sector == "📊 Finanzas y Emprendimiento":
       meta_fire = gasto_anual / tasa_retiro if tasa_retiro > 0 else 0
       faltante = max(0.0, meta_fire - inversion_actual)
       st.success(
-          f"### Tu número FIRE (Capital total necesario): ${meta_fire:,.2f}"
+          f"### Tu número FIRE (Capital total necesario):"
+          f" {simbolo}{meta_fire:,.2f}"
       )
-      st.write(f"Te faltan **${faltante:,.2f}** para alcanzar tu independencia.")
+      st.write(
+          f"Te faltan **{simbolo}{faltante:,.2f}** para alcanzar tu"
+          " independencia."
+      )
 
 # ==========================================
 # SECTOR 2: PRODUCTIVIDAD Y GESTIÓN
@@ -162,16 +209,20 @@ elif sector == "🏢 Productividad y Gestión":
           "Horas estimadas de trabajo", min_value=1.0, value=50.0
       )
       tarifa_hora_recurso = st.number_input(
-          "Costo promedio por hora del equipo ($)", min_value=0.0, value=25.0
+          f"Costo promedio por hora del equipo ({simbolo})",
+          min_value=0.0,
+          value=25.0 * tasa_cambio,
       )
     with col2:
       otros_costos = st.number_input(
-          "Costos adicionales (recursos/licencias puntuales) ($)",
+          f"Costos adicionales (recursos/licencias puntuales) ({simbolo})",
           min_value=0.0,
-          value=100.0,
+          value=100.0 * tasa_cambio,
       )
       margen_desviacion = (
-          st.number_input("Margen de contingencia por imprevistos (%)", value=15.0)
+          st.number_input(
+              "Margen de contingencia por imprevistos (%)", value=15.0
+          )
           / 100
       )
 
@@ -179,10 +230,12 @@ elif sector == "🏢 Productividad y Gestión":
       costo_base = (horas_est * tarifa_hora_recurso) + otros_costos
       costo_con_contingencia = costo_base * (1 + margen_desviacion)
       st.success(
-          f"### Costo Total Estimado del Proyecto: ${costo_con_contingencia:.2f}"
+          f"### Costo Total Estimado del Proyecto:"
+          f" {simbolo}{costo_con_contingencia:.2f}"
       )
       st.write(
-          f"Incluye un buffer de contingencia de ${costo_base * margen_desviacion:.2f}."
+          "Incluye un buffer de contingencia de"
+          f" {simbolo}{costo_base * margen_desviacion:.2f}."
       )
 
   elif herramienta_prod == "Calculador de ROI de herramientas de software":
@@ -190,18 +243,18 @@ elif sector == "🏢 Productividad y Gestión":
     col1, col2 = st.columns(2)
     with col1:
       costo_software = st.number_input(
-          "Costo mensual de la suscripción del software ($)",
+          f"Costo mensual de la suscripción del software ({simbolo})",
           min_value=0.0,
-          value=50.0,
+          value=50.0 * tasa_cambio,
       )
       horas_ahorradas = st.number_input(
           "Horas ahorradas al mes en total", min_value=0.0, value=12.0
       )
     with col2:
       valor_hora_empleado = st.number_input(
-          "Costo por hora del empleado que ahorra tiempo ($)",
+          f"Costo por hora del empleado que ahorra tiempo ({simbolo})",
           min_value=0.0,
-          value=20.0,
+          value=20.0 * tasa_cambio,
       )
 
     if st.button("Calcular ROI de Software"):
@@ -213,7 +266,9 @@ elif sector == "🏢 Productividad y Gestión":
           else 0
       )
 
-      st.success(f"### Beneficio Neto Mensual: ${beneficio_neto:.2f}")
+      st.success(
+          f"### Beneficio Neto Mensual: {simbolo}{beneficio_neto:.2f}"
+      )
       st.metric(label="Retorno de Inversión (ROI)", value=f"{roi:.2f}%")
 
 # ==========================================
@@ -232,7 +287,7 @@ elif sector == "🏋️ Salud, Fitness y Nutrición":
   if herramienta_salud == (
       "Calculador de Macronutrientes y Calorías Avanzado"
   ):
-    st.subheader("🥗 Macos y Calorías con Planificador Semanal")
+    st.subheader("🥗 Macros y Calorías con Planificador Semanal")
     col1, col2 = st.columns(2)
     with col1:
       peso = st.number_input("Peso actual (kg)", min_value=30.0, value=70.0)
@@ -241,7 +296,8 @@ elif sector == "🏋️ Salud, Fitness y Nutrición":
     with col2:
       genero = st.selectbox("Género", ["Hombre", "Mujer"])
       objetivo = st.selectbox(
-          "Objetivo", ["Déficit (Definición)", "Mantenimiento", "Superávit (Volumen)"]
+          "Objetivo",
+          ["Déficit (Definición)", "Mantenimiento", "Superávit (Volumen)"],
       )
       actividad = st.selectbox(
           "Nivel de Actividad",
@@ -249,13 +305,11 @@ elif sector == "🏋️ Salud, Fitness y Nutrición":
       )
 
     if st.button("Generar Plan Nutricional"):
-      # Cálculo TMB Harris-Benedict
       if genero == "Hombre":
         tmb = 88.36 + (13.4 * peso) + (4.8 * altura) - (5.7 * edad)
       else:
         tmb = 447.6 + (9.2 * peso) + (3.1 * altura) - (4.3 * edad)
 
-      # Factor de actividad
       factores = {
           "Sedentario": 1.2,
           "Moderado (3-4 días/sem)": 1.55,
@@ -263,7 +317,6 @@ elif sector == "🏋️ Salud, Fitness y Nutrición":
       }
       tdee = tmb * factores[actividad]
 
-      # Ajuste por objetivo
       if "Déficit" in objetivo:
         calorias = tdee - 500
       elif "Superávit" in objetivo:
@@ -271,8 +324,7 @@ elif sector == "🏋️ Salud, Fitness y Nutrición":
       else:
         calorias = tdee
 
-      # Macros aproximados
-      proteinas = peso * 2.0  # 2g por kg
+      proteinas = peso * 2.0
       grasas = (calorias * 0.25) / 9
       carbohidratos = (calorias - (proteinas * 4 + grasas * 9)) / 4
 
@@ -282,7 +334,6 @@ elif sector == "🏋️ Salud, Fitness y Nutrición":
           f" {int(grasas)}g\n- **Carbohidratos:** {int(carbohidratos)}g"
       )
 
-      # Exportar tabla simulada de porciones semanales
       st.write("---")
       st.subheader("📅 Distribución Semanal Sugerida (Macros)")
       dias = [
@@ -313,7 +364,6 @@ elif sector == "🏋️ Salud, Fitness y Nutrición":
     )
 
     if st.button("Calcular Porcentajes de Carga"):
-      # Fórmula de Epley para estimar 1RM
       one_rm = peso_levantado * (1 + (repeticiones / 30.0))
       st.success(f"### Tu 1RM Estimado: {one_rm:.1f} kg")
 
@@ -322,7 +372,9 @@ elif sector == "🏋️ Salud, Fitness y Nutrición":
       datos_cargas = []
       for p in porcentajes:
         carga = one_rm * (p / 100)
-        datos_cargas.append({"Porcentaje": f"{p}%", "Peso Sugerido": f"{carga:.1f} kg"})
+        datos_cargas.append(
+            {"Porcentaje": f"{p}%", "Peso Sugerido": f"{carga:.1f} kg"}
+        )
 
       st.table(pd.DataFrame(datos_cargas))
 
@@ -344,10 +396,14 @@ elif sector == "📱 Creadores y Marketing":
     col1, col2 = st.columns(2)
     with col1:
       presupuesto_total = st.number_input(
-          "Presupuesto Total de Campaña ($)", min_value=0.0, value=500.0
+          f"Presupuesto Total de Campaña ({simbolo})",
+          min_value=0.0,
+          value=500.0 * tasa_cambio,
       )
       cpc_estimado = st.number_input(
-          "Costo por Clic (CPC) estimado ($)", min_value=0.01, value=0.50
+          f"Costo por Clic (CPC) estimado ({simbolo})",
+          min_value=0.01,
+          value=0.50 * tasa_cambio,
       )
     with col2:
       tasa_conv = (
@@ -357,16 +413,16 @@ elif sector == "📱 Creadores y Marketing":
     if st.button("Calcular Proyección"):
       clics = presupuesto_total / cpc_estimado if cpc_estimado > 0 else 0
       conversiones = clics * tasa_conv
-      cpa = (
-          presupuesto_total / conversiones
-          if conversiones > 0
-          else 0
-      )
+      cpa = presupuesto_total / conversiones if conversiones > 0 else 0
 
       st.success(f"### Clics estimados: {int(clics):,}")
       col_a, col_b = st.columns(2)
-      col_a.metric(label="Conversiones Estimadas", value=f"{int(conversiones):,}")
-      col_b.metric(label="Costo por Adquisición (CPA)", value=f"${cpa:.2f}")
+      col_a.metric(
+          label="Conversiones Estimadas", value=f"{int(conversiones):,}"
+      )
+      col_b.metric(
+          label="Costo por Adquisición (CPA)", value=f"{simbolo}{cpa:.2f}"
+      )
 
   elif herramienta_mk == "Calculador de precios de Patrocinios":
     st.subheader("🤝 Calculador de Precios para Patrocinios (Influencers)")
@@ -381,23 +437,28 @@ elif sector == "📱 Creadores y Marketing":
     with col2:
       nicho = st.selectbox(
           "Nicho de mercado",
-          ["Finanzas / Tech (Alto valor)", "Lifestyle / Moda", "Gaming / Entretenimiento"],
+          [
+              "Finanzas / Tech (Alto valor)",
+              "Lifestyle / Moda",
+              "Gaming / Entretenimiento",
+          ],
       )
 
     if st.button("Calcular Tarifa Sugerida"):
-      # Multiplicadores según nicho
       multiplicador = {
-          "Finanzas / Tech (Alto valor)": 0.05,
-          "Lifestyle / Moda": 0.03,
-          "Gaming / Entretenimiento": 0.02,
+          "Finanzas / Tech (Alto valor)": 0.05 * tasa_cambio,
+          "Lifestyle / Moda": 0.03 * tasa_cambio,
+          "Gaming / Entretenimiento": 0.02 * tasa_cambio,
       }[nicho]
 
-      # Tarifa base basada en vistas y multiplicador con ajuste de engagement
       tarifa_base = vistas_promedio * multiplicador
       ajuste_engagement = 1 + (engagement_rate / 10)
       tarifa_final = tarifa_base * ajuste_engagement
 
-      st.success(f"### Tarifa recomendada por mención/post: ${tarifa_final:,.2f}")
+      st.success(
+          f"### Tarifa recomendada por mención/post:"
+          f" {simbolo}{tarifa_final:,.2f}"
+      )
       st.info(
           "Este valor pondera tu audiencia base y el valor del sector comercial"
           " al que te diriges."
