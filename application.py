@@ -1,4 +1,5 @@
 import io
+import zipfile
 import pandas as pd
 from deep_translator import GoogleTranslator
 from requests import Session
@@ -26,131 +27,110 @@ Session.send = _patched_send
 # Configuración de la página
 # ==========================================
 st.set_page_config(
-    page_title="Lector y Traductor Multitabla Pro", layout="wide"
+    page_title="Lector y Traductor Corporativo Pro",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # ==========================================
-# ESTILOS PERSONALIZADOS: ANIMACIÓN NEÓN Y UI MEJORADA
+# ESTILOS CORPORATIVOS AVANZADOS (SaaS Clean Theme)
 # ==========================================
 st.markdown(
     """
     <style>
-        /* Animación de luces neón fluidas (azul oscuro a azul medio claro) */
-        @keyframes neonPulse {
-            0% {
-                border-color: #0044cc;
-                box-shadow: 0 0 15px #0011aa, inset 0 0 8px #000555;
-            }
-            50% {
-                border-color: #00bfff;
-                box-shadow: 0 0 25px #0088ff, inset 0 0 15px #0044aa;
-            }
-            100% {
-                border-color: #0044cc;
-                box-shadow: 0 0 15px #0011aa, inset 0 0 8px #000555;
-            }
+        /* Estilos generales corporativos limpios y minimalistas */
+        .main {
+            background-color: #0f172a;
+            color: #f8fafc;
         }
 
-        @keyframes neonGlowSoft {
-            0% {
-                border-color: #0033aa;
-                box-shadow: 0 0 10px #001188;
-            }
-            50% {
-                border-color: #0099ff;
-                box-shadow: 0 0 18px #0055cc;
-            }
-            100% {
-                border-color: #0033aa;
-                box-shadow: 0 0 10px #001188;
-            }
+        /* Encabezado Principal Corporativo */
+        .header-container {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-
-        /* 1. RECUADRO ANIMADO PARA EL TÍTULO PRINCIPAL */
-        .recuadro-titulo {
-            border: 3px solid #0044cc;
-            border-radius: 14px;
-            padding: 24px;
-            margin-bottom: 30px;
-            text-align: center;
-            background: linear-gradient(135deg, rgba(0, 10, 40, 0.7), rgba(0, 30, 80, 0.4));
-            animation: neonPulse 6s infinite ease-in-out;
+        .header-title {
+            color: #f8fafc !important;
+            font-size: 28px !important;
+            font-weight: 700 !important;
+            margin: 0 0 8px 0 !important;
+            letter-spacing: -0.5px;
         }
-        .texto-titulo {
-            color: #e0f7ff !important;
-            font-size: 32px !important;
-            font-weight: 800 !important;
-            text-shadow: 0 0 12px #00bfff, 0 u 0 20px #0044ff !important;
+        .header-subtitle {
+            color: #94a3b8 !important;
+            font-size: 15px !important;
             margin: 0 !important;
-            letter-spacing: 1px;
+            font-weight: 400;
         }
 
-        /* 2. RECUADRO ANIMADO PARA LOS TÍTULOS DE CADA TABLA */
-        .tabla-contenedor {
-            border: 2px solid #0033aa;
-            border-radius: 8px;
-            padding: 12px 18px;
-            margin-top: 25px;
-            margin-bottom: 8px;
-            background: linear-gradient(90deg, rgba(0, 15, 45, 0.5), rgba(0, 5, 20, 0.3));
-            animation: neonGlowSoft 5s infinite ease-in-out;
+        /* Tarjetas de Contenedores de Tablas */
+        .table-card {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .table-header-text {
+            color: #38bdf8 !important;
+            font-weight: 600 !important;
+            font-size: 16px !important;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
-        .tabla-titulo {
-            color: #66ccff !important;
-            font-weight: 700 !important;
-            font-size: 18px !important;
-            text-shadow: 0 0 8px #0066ff !important;
+
+        /* Paneles laterales / Configuración */
+        .css-1d391kg, [data-testid="stSidebar"] {
+            background-color: #0b0f19;
+            border-right: 1px solid #1e293b;
         }
 
-        /* 3. CONTENEDOR DE PARÁMETROS Y CONFIGURACIÓN */
-        .panel-parametros {
-            border: 2px solid #0055ff;
-            box-shadow: 0 0 15px rgba(0, 120, 255, 0.3);
-            border-radius: 10px;
-            padding: 20px;
-            background-color: rgba(0, 10, 30, 0.4);
-            margin-bottom: 25px;
-        }
-
-        /* 4. ESTILOS DE TABLAS STREAMLIT */
-        [data-testid="stDataFrame"] {
-            border: 2px solid #0044aa !important;
-            border-radius: 8px !important;
-            box-shadow: 0 0 10px rgba(0, 80, 255, 0.2) !important;
-        }
-
-        /* 5. BOTONES MODERNOS Y LLAMATIVOS */
+        /* Botones de acción profesionales */
         div.stButton > button {
             width: 100% !important;
-            height: 52px !important;
-            font-size: 15px !important;
-            font-weight: bold !important;
-            border-radius: 10px !important;
-            transition: all 0.3s ease !important;
-            box-shadow: 0 0 10px rgba(0, 80, 255, 0.4);
+            height: 44px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            border: 1px solid #334155 !important;
+            transition: all 0.2s ease-in-out !important;
         }
         div.stButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 20px rgba(0, 180, 255, 0.8);
+            border-color: #38bdf8 !important;
+            background-color: #334155 !important;
+        }
+
+        /* Tablas Streamlit */
+        [data-testid="stDataFrame"] {
+            border: 1px solid #334155 !important;
+            border-radius: 8px !important;
+            background-color: #0f172a !important;
         }
     </style>""",
     unsafe_allow_html=True,
 )
 
-# Inicializar las variables de estado de forma persistente
+# Inicializar estados de sesión de forma segura y estructurada
 if "tablas_originales" not in st.session_state:
-  st.session_state.tablas_originales = {}
+  st.session_state.tablas_originales = {}  # {nombre_archivo: {sheet_name: df}}
 if "tablas_render" not in st.session_state:
-  st.session_state.tablas_render = {}
+  st.session_state.tablas_render = {}  # {nombre_archivo: {sheet_name: df}}
 if "idioma_actual" not in st.session_state:
   st.session_state.idioma_actual = "Original"
+if "uploader_key" not in st.session_state:
+  st.session_state.uploader_key = 0
 
 
-# Función para asegurar que los nombres de las columnas sean únicos
-def hacer_columnas_unicas(df):
+def hacer_columnas_unicas(df: pd.DataFrame) -> pd.DataFrame:
+  """Asegura que los nombres de las columnas sean únicos agregando sufijos si hay duplicados."""
   cols = []
   count = {}
   for col in df.columns:
@@ -165,43 +145,81 @@ def hacer_columnas_unicas(df):
   return df
 
 
-# Función para convertir un DataFrame a Excel en memoria
-def convertir_df_a_excel(df):
+def convertir_df_a_excel(df: pd.DataFrame) -> bytes:
+  """Convierte un DataFrame a formato Excel (.xlsx) en memoria."""
   output = io.BytesIO()
   with pd.ExcelWriter(output, engine="openpyxl") as writer:
-    df.to_excel(writer, index=False, sheet_name="Traducido")
-  processed_data = output.getvalue()
-  return processed_data
+    df.to_excel(writer, index=False, sheet_name="Datos_Procesados")
+  return output.getvalue()
 
 
-# Título Principal
+def crear_zip_masivo(tablas_dict: dict) -> bytes:
+  """Comprime múltiples DataFrames procesados en un archivo ZIP en memoria."""
+  zip_buffer = io.BytesIO()
+  with zipfile.ZipFile(
+      zip_buffer, "w", zipfile.ZIP_DEFLATED
+  ) as zip_file_obj:
+    for nombre_archivo, sheets in tablas_dict.items():
+      for sheet_name, df in sheets.items():
+        excel_data = convertir_df_a_excel(df)
+        nombre_dentro_zip = f"traducido_{nombre_archivo.replace('.xlsx', '')}_{sheet_name}.xlsx"
+        zip_file_obj.writestr(nombre_dentro_zip, excel_data)
+  return zip_buffer.getvalue()
+
+
+# ==========================================
+# INTERFAZ PRINCIPAL - HEADER
+# ==========================================
 st.markdown(
     """
-    <div class="recuadro-titulo">
-        <h1 class="texto-titulo">⚡ Lector y Traductor de Múltiples Tablas Excel Pro ⚡</h1>
-    </div>""",
+    <div class="header-container">
+        <h1 class="header-title">📊 Lector y Traductor Multitabla Corporativo</h1>
+        <p class="header-subtitle">Plataforma avanzada de procesamiento, traducción optimizada y gestión inteligente de datos empresariales en Excel.</p>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
 
-st.markdown(
-    "<p style='text-align: center; color: #a0c4ff; font-size: 16px; margin-bottom: 25px;'>"
-    "Sube tus archivos de Excel para visualizar, traducir de forma masiva y exportar tus datos con estilo neón dinámico."
-    "</p>",
-    unsafe_allow_html=True,
-)
+# ==========================================
+# BARRA LATERAL - CONFIGURACIÓN Y CARGA
+# ==========================================
+with st.sidebar:
+  st.markdown("### 📂 Carga de Archivos")
+  uploaded_files = st.file_uploader(
+      "Selecciona archivos Excel (.xlsx)",
+      type=["xlsx"],
+      accept_multiple_files=True,
+      key=f"uploader_{st.session_state.uploader_key}",
+  )
 
-# Clave dinámica para reiniciar por completo el cargador al borrar
-if "uploader_key" not in st.session_state:
-  st.session_state.uploader_key = 0
+  st.markdown("---")
+  st.markdown("### ⚙️ Parámetros de Traducción")
+  idioma_seleccionado = st.selectbox(
+      "Dirección de Traducción",
+      ("Español (desde Inglés)", "Inglés (desde Español)"),
+      index=0,
+  )
 
-uploaded_files = st.file_uploader(
-    "📂 Sube uno o varios archivos Excel (.xlsx)",
-    type=["xlsx"],
-    accept_multiple_files=True,
-    key=f"uploader_{st.session_state.uploader_key}",
-)
+  # Selección inteligente de columnas a excluir (ej. columnas numéricas, IDs)
+  excluir_numericas = st.checkbox(
+      "Excluir automáticamente columnas numéricas/IDs",
+      value=True,
+      help=(
+          "Evita enviar números de serie, fechas o identificadores al traductor"
+          " para mejorar la velocidad y precisión."
+      ),
+  )
 
-# === 1. CAPTURA Y CARGA DE DATOS EN MEMORIA ===
+  st.markdown("---")
+  col_btn1, col_btn2 = st.columns(2)
+  with col_btn1:
+    btn_traducir = st.button("🚀 Traducir", type="primary")
+  with col_btn2:
+    btn_borrar = st.button("🧹 Limpiar")
+
+# ==========================================
+# GESTIÓN DE CARGA DE DATOS EN MEMORIA
+# ==========================================
 if uploaded_files:
   archivos_actuales = [f.name for f in uploaded_files]
   llaves_guardadas = list(st.session_state.tablas_originales.keys())
@@ -218,159 +236,224 @@ if uploaded_files:
         nuevos_render[file.name] = st.session_state.tablas_render[file.name]
       else:
         try:
-          df = pd.read_excel(file)
-          df = hacer_columnas_unicas(df)
-          nuevos_originales[file.name] = df.copy()
-          nuevos_render[file.name] = df.copy()
+          # Leer todas las hojas del archivo Excel en un diccionario de DataFrames
+            xls = pd.ExcelFile(file)
+            sheets_dict = {}
+            sheets_render_dict = {}
+            for sheet in xls.sheet_names:
+              df = pd.read_excel(file, sheet_name=sheet)
+              if not df.empty:
+                df = hacer_columnas_unicas(df)
+                sheets_dict[sheet] = df.copy()
+                sheets_render_dict[sheet] = df.copy()
+            if sheets_dict:
+              nuevos_originales[file.name] = sheets_dict
+              nuevos_render[file.name] = sheets_render_dict
         except Exception as e:
-          st.error(f"Error al leer el archivo {file.name}: {e}")
+          st.sidebar.error(f"Error al leer {file.name}: {e}")
 
     st.session_state.tablas_originales = nuevos_originales
     st.session_state.tablas_render = nuevos_render
     st.session_state.idioma_actual = "Original"
 
-# === 2. PANEL DE PARÁMETROS (IDIOMAS Y BOTONES) ===
-if st.session_state.tablas_originales:
-  st.markdown(
-      """
-        <div class="panel-parametros">
-            <h3 style="color: #66ccff; margin-top: 0; text-shadow: 0 0 6px #0044ff;">⚙️ Panel de Parámetros y Configuración</h3>
-        """,
-      unsafe_allow_html=True,
-  )
+# Lógica del Botón Limpiar
+if btn_borrar:
+  st.session_state.tablas_originales = {}
+  st.session_state.tablas_render = {}
+  st.session_state.idioma_actual = "Original"
+  st.session_state.uploader_key += 1
+  st.rerun()
 
-  idioma_seleccionado = st.selectbox(
-      "🌐 ¿A qué idioma deseas traducir la información de las tablas?",
-      ("Español (desde inglés)", "Inglés (desde español)"),
-      index=0,
-  )
+# ==========================================
+# LÓGICA DE TRADUCCIÓN OPTIMIZADA CON BARRA DE PROGRESO
+# ==========================================
+if btn_traducir and st.session_state.tablas_originales:
+  target_lang = "es" if "Español" in idioma_seleccionado else "en"
+  source_lang = "en" if target_lang == "es" else "es"
 
-  st.write("")
-  col1, col2 = st.columns(2)
+  try:
+    translator = GoogleTranslator(source=source_lang, target=target_lang)
 
-  with col1:
-    btn_traducir = st.button("🚀 PROCESAR Y TRADUCIR TABLAS", type="primary")
+    # Calcular total de elementos para la barra de progreso global
+    total_celdas_aprox = 0
+    for f_name, sheets in st.session_state.tablas_originales.items():
+      for s_name, df in sheets.items():
+        total_celdas_aprox += df.shape[0] * df.shape[1]
 
-  with col2:
-    btn_borrar = st.button("🧹 BORRAR Y LIMPIAR PANTALLA", type="secondary")
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    celdas_procesadas = 0
 
-  st.markdown("</div>", unsafe_allow_html=True)
-
-  # Lógica del botón Traducir
-  if btn_traducir:
-    target_lang = "es" if "Español" in idioma_seleccionado else "en"
-
-    with st.spinner(
-        "🔄 Conectando con el motor de traducción y procesando celdas..."
-    ):
-      try:
-        # Se inicializa el traductor correctamente especificando origen y destino
-        source_lang = "en" if target_lang == "es" else "es"
-        translator = GoogleTranslator(source=source_lang, target=target_lang)
-
-        def traducir_seguro(val):
-          if pd.isna(val):
-            return val
-          val_str = str(val).strip()
-          if val_str and not val_str.replace(".", "", 1).isdigit():
-            try:
-              res = translator.translate(val_str)
-              return res if res else val
-            except Exception:
-              return val
+    def traducir_seguro(val):
+      if pd.isna(val):
+        return val
+      val_str = str(val).strip()
+      if val_str and not val_str.replace(".", "", 1).isdigit():
+        try:
+          res = translator.translate(val_str)
+          return res if res else val
+        except Exception:
           return val
+      return val
 
-        for (
-            nombre_archivo,
-            df_orig,
-        ) in st.session_state.tablas_originales.items():
-          df_traducido = df_orig.copy()
+    nuevos_render_traducidos = {}
 
-          # Traducir los encabezados de las columnas
-          nuevas_cols = []
-          for col in df_traducido.columns:
-            col_str = str(col).strip()
-            if col_str and not col_str.isdigit():
-              try:
-                res_col = translator.translate(col_str)
-                nuevas_cols.append(res_col if res_col else col_str)
-              except Exception:
-                nuevas_cols.append(col_str)
-            else:
+    for nombre_archivo, sheets in st.session_state.tablas_originales.items():
+      sheets_traducidas = {}
+      for sheet_name, df_orig in sheets.items():
+        df_traducido = df_orig.copy()
+
+        # 1. Traducir Encabezados
+        nuevas_cols = []
+        for col in df_traducido.columns:
+          col_str = str(col).strip()
+          if col_str and not col_str.isdigit():
+            try:
+              res_col = translator.translate(col_str)
+              nuevas_cols.append(res_col if res_col else col_str)
+            except Exception:
               nuevas_cols.append(col_str)
+          else:
+            nuevas_cols.append(col_str)
+        df_traducido.columns = nuevas_cols
+        df_traducido = hacer_columnas_unicas(df_traducido)
 
-          df_traducido.columns = nuevas_cols
-          df_traducido = hacer_columnas_unicas(df_traducido)
+        # 2. Traducir Celdas por columnas de forma inteligente
+        for col in df_traducido.columns:
+          # Si se solicita excluir numéricas y la columna es de tipo numérico, se omite
+          if excluir_numericas and pd.api.types.is_numeric_dtype(
+              df_traducido[col]
+          ):
+            continue
 
-          # Traducir todas las celdas del DataFrame
-          for col in df_traducido.columns:
-            df_traducido[col] = (
-                df_traducido[col].astype(object).apply(traducir_seguro)
+          df_traducido[col] = (
+              df_traducido[col].astype(object).apply(traducir_seguro)
+          )
+          celdas_procesadas += len(df_traducido)
+          if total_celdas_aprox > 0:
+            progreso_actual = min(
+                float(celdas_procesadas / total_celdas_aprox), 1.0
+            )
+            progress_bar.progress(progreso_actual)
+            status_text.text(
+                f"Traduciendo archivo: {nombre_archivo} (Hoja: {sheet_name})..."
             )
 
-          st.session_state.tablas_render[nombre_archivo] = df_traducido
+        sheets_traducidas[sheet_name] = df_traducido
+      nuevos_render_traducidos[nombre_archivo] = sheets_traducidas
 
-        st.session_state.idioma_actual = (
-            "Traducido al Español"
-            if target_lang == "es"
-            else "Traducido al Inglés"
-        )
-        st.success("¡Traducción completada con éxito!")
-        st.rerun()
-      except Exception as ex:
-        st.error(
-            f"Hubo un inconveniente con el servicio de traducción: {ex}. Por"
-            " favor intenta nuevamente."
-        )
+    st.session_state.tablas_render = nuevos_render_traducidos
+    st.session_state.idioma_actual = (
+        "Traducido al Español" if target_lang == "es" else "Traducido al Inglés"
+    )
 
-  # Lógica del botón Borrar
-  if btn_borrar:
-    st.session_state.tablas_originales = {}
-    st.session_state.tablas_render = {}
-    st.session_state.idioma_actual = "Original"
-    st.session_state.uploader_key += 1
+    progress_bar.empty()
+    status_text.empty()
+    st.success("¡Traducción masiva completada exitosamente!")
     st.rerun()
 
-  # === 3. VISTA EN PANTALLA Y DESCARGAS ===
-  st.markdown("---")
-  st.markdown(
-      f"<h4 style='color: #88eeff;'>📊 Estado actual de visualización: <span style='color: #ffffff;'>{st.session_state.idioma_actual}</span></h4>",
-      unsafe_allow_html=True,
+  except Exception as ex:
+    st.error(
+        f"Se interrumpió el proceso de traducción por un error de conexión: {ex}"
+    )
+
+# ==========================================
+# CUERPO PRINCIPAL - VISUALIZACIÓN Y MÉTRICAS
+# ==========================================
+if st.session_state.tablas_originales:
+  # Opciones globales de descarga ZIP si hay más de un archivo o varias hojas
+  st.markdown("### 📥 Panel de Exportación Masiva")
+  zip_bytes = crear_zip_masivo(st.session_state.tablas_render)
+  st.download_button(
+      label="📦 Descargar Todos los Archivos Procesados (.ZIP)",
+      data=zip_bytes,
+      file_name="archivos_excel_traducidos.zip",
+      mime="application/zip",
+      type="primary",
   )
 
-  for indice, (nombre_archivo, df_tabla) in enumerate(
-      st.session_state.tablas_render.items()
-  ):
+  st.markdown("---")
+  st.markdown(
+      f"#### 🔍 Vista de Datos | Estado: **{st.session_state.idioma_actual}**"
+  )
+
+  for nombre_archivo, sheets in st.session_state.tablas_render.items():
     st.markdown(
-        f"""
-        <div class="tabla-contenedor">
-            <span class="tabla-titulo">📁 Tabla {indice + 1}: {nombre_archivo}</span>
-            <span style="color: #00ffcc; font-size: 13px; font-weight: bold;">[ {df_tabla.shape[0]} filas x {df_tabla.shape[1]} columnas ]</span>
-        </div>""",
+        f"<h3 style='color: #38bdf8; font-size: 20px; margin-top: 25px;'>📁 Archivo: {nombre_archivo}</h3>",
         unsafe_allow_html=True,
     )
 
-    st.dataframe(df_tabla, use_container_width=True)
+    # Selector de pestañas (Sheets) si el archivo contiene múltiples hojas
+    sheet_names = list(sheets.keys())
+    sheet_seleccionada = (
+        st.selectbox(
+            f"Seleccionar Hoja para '{nombre_archivo}':",
+            sheet_names,
+            key=f"sheet_select_{nombre_archivo}",
+        )
+        if len(sheet_names) > 1
+        else sheet_names
+    )
 
-    # Botón de descarga individual optimizado
-    excel_data = convertir_df_a_excel(df_tabla)
-    nombre_salida = f"traducido_{nombre_archivo}"
+    df_tabla = sheets[sheet_seleccionada]
+
+    # Panel Métricas Básicas (st.metric)
+    total_filas, total_columnas = df_tabla.shape
+    celdas_vacias = int(df_tabla.isna().sum().sum())
+
+    m1, m2, m3 = st.columns(3)
+    with m1:
+      st.metric(label="Total de Filas", value=f"{total_filas:,}")
+    with m2:
+      st.metric(label="Total de Columnas", value=f"{total_columnas:,}")
+    with m3:
+      st.metric(label="Celdas Vacías", value=f"{celdas_vacias:,}")
+
+    # Buscador / Filtro en tiempo real
+    busqueda = st.text_input(
+        f"🔍 Buscar registros en '{nombre_archivo}' -> '{sheet_seleccionada}':",
+        key=f"search_{nombre_archivo}_{sheet_seleccionada}",
+        placeholder="Escribe para filtrar filas en tiempo real...",
+    )
+
+    df_filtrado = df_tabla.copy()
+    if busqueda:
+      # Filtrar de manera insensible a mayúsculas/minúsculas en cualquier columna de tipo texto/string
+      mask = df_filtrado.astype(str).apply(
+          lambda col: col.str.contains(busqueda, case=False, na=False)
+      ).any(axis=1)
+      df_filtrado = df_filtrado[mask]
+
+    # Renderizado de Tabla con Contenedor Profesional Estilizado
+    st.markdown(
+        """
+        <div class="table-card">
+        """,
+        unsafe_allow_html=True,
+    )
+    st.dataframe(df_filtrado, use_container_width=True, height=350)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Botón de descarga individual por hoja/tabla
+    excel_data_single = convertir_df_a_excel(df_filtrado)
+    nombre_salida = (
+        f"traducido_{nombre_archivo.replace('.xlsx', '')}_{sheet_seleccionada}.xlsx"
+    )
 
     st.download_button(
-        label=f"📥 Descargar '{nombre_archivo}' procesado en Excel",
-        data=excel_data,
+        label=f"📥 Descargar Hoja '{sheet_seleccionada}' en Excel",
+        data=excel_data_single,
         file_name=nombre_salida,
         mime=(
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ),
-        key=f"download_{indice}_{nombre_archivo}",
+        key=f"download_{nombre_archivo}_{sheet_seleccionada}",
     )
-    st.write("")
+    st.markdown("---")
 
 else:
-  if not uploaded_files and st.session_state.tablas_originales:
-    st.session_state.tablas_originales = {}
-    st.session_state.tablas_render = {}
-    st.session_state.idioma_actual = "Original"
-    st.rerun()
-  st.info("💡 Por favor, sube uno o varios archivos Excel para comenzar.")
+  # Estado inicial vacío
+  st.info(
+      "💡 Para comenzar, utiliza el panel lateral izquierdo para subir uno o"
+      " varios archivos con formato Excel (.xlsx)."
+  )
