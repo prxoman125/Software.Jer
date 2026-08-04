@@ -22,25 +22,58 @@ Session.send = _patched_send
 st.set_page_config(page_title="Lector y Traductor Multitabla", layout="wide")
 
 # ==========================================
-# DISEÑO PERSONALIZADO: AZUL OSCURO NEÓN (SIN EMOJIS)
+# DISEÑO PERSONALIZADO: AZUL OSCURO NEÓN Y BORDES DE TABLAS
 # ==========================================
 st.markdown("""
     <style>
-        /* Estilo neón azul oscuro para los contenedores de las tablas */
-        .tabla-contenedor {
-            border: 2px solid #0055ff !important;
-            box-shadow: 0 0 10px #0022aa, inset 0 0 5px #001155 !important;
-            border-radius: 8px !important;
-            padding: 15px !important;
-            margin-bottom: 25px !important;
-            background-color: transparent !important;
+        /* 1. RECUADRO AZUL OSCURO NEÓN PARA EL TÍTULO PRINCIPAL */
+        .recuadro-titulo {
+            border: 3px solid #0044cc;
+            box-shadow: 0 0 20px #0011aa, inset 0 0 10px #000555;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            background-color: rgba(0, 10, 50, 0.5);
         }
-        /* Estilo para los títulos de cada tabla */
-        .tabla-titulo {
-            color: #0088ff !important;
+        .texto-titulo {
+            color: #00aaff !important;
+            font-size: 32px !important;
             font-weight: bold !important;
-            text-shadow: 0 0 5px #0033aa !important;
-            margin-bottom: 10px !important;
+            text-shadow: 0 0 10px #0044ff !important;
+            margin: 0 !important;
+        }
+
+        /* 2. RECUADRO NEÓN PARA LOS TÍTULOS DE CADA TABLA SEPARADA */
+        .tabla-contenedor {
+            border: 2px solid #0033aa;
+            box-shadow: 0 0 12px #001188;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-top: 20px;
+            margin-bottom: 5px;
+            background-color: rgba(0, 5, 30, 0.3);
+        }
+        .tabla-titulo {
+            color: #0077ff !important;
+            font-weight: bold !important;
+            text-shadow: 0 0 5px #002288 !important;
+        }
+
+        /* 3. CAMBIAR LÍNEAS INTERNAS Y BORDES DE LAS TABLAS DE STREAMLIT */
+        /* Forzamos los colores de la cuadrícula interactiva de Streamlit (Glide Data Grid) */
+        [data-testid="stDataFrame"] {
+            border: 2px solid #002288 !important;
+            border-radius: 6px !important;
+            box-shadow: 0 0 8px #001166 !important;
+            --st-border-color: #002288 !important;          /* Líneas de división internas */
+            --theme-borderColor: #002288 !important;
+            --st-background-color: transparent !important;
+        }
+        
+        /* Ajustes adicionales para bordes de celdas en el componente nativo */
+        div[data-testid="stDataFrame"] > div {
+            border-color: #002288 !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -68,7 +101,13 @@ def hacer_columnas_unicas(df):
     df.columns = cols
     return df
 
-st.title("Lector y Traductor de Multiples Tablas Excel")
+# Aplicación del Recuadro del Título Principal mediante HTML
+st.markdown("""
+    <div class="recuadro-titulo">
+        <h1 class="texto-titulo">Lector y Traductor de Multiples Tablas Excel</h1>
+    </div>
+""", unsafe_allow_html=True)
+
 st.write("Sube tus archivos. El sistema cuenta con parches automatizados contra caidas de servidor.")
 
 # Clave dinámica para reiniciar por completo el cargador al borrar
@@ -179,14 +218,15 @@ if st.session_state.tablas_originales:
     st.write("---")
     st.write(f"Visualizando tablas en modo: **{st.session_state.idioma_actual}**")
     
-    # Renderizado con contenedores HTML para aplicar los bordes azul neón oscuros
+    # Renderizado iterativo de las tablas con diseño azul semi-oscuro integrado
     for indice, (nombre_archivo, df_tabla) in enumerate(st.session_state.tablas_render.items()):
         st.markdown(f"""
             <div class="tabla-contenedor">
                 <div class="tabla-titulo">Tabla {indice + 1}: {nombre_archivo}</div>
             </div>
         """, unsafe_allow_html=True)
-        # La tabla se coloca justo debajo del contenedor con borde neón
+        
+        # Muestra el DataFrame, el cual adopta las líneas y bordes azul semi-oscuro mediante CSS avanzado
         st.dataframe(df_tabla, use_container_width=True)
         st.write("") 
 
